@@ -8,11 +8,23 @@ datasource db {
 }
 
 model User {
-  id       String @id @default(uuid())
-  username String @unique
-  email    String @unique
-  password String
-  tasks    Task[] @relation("UserTasks")
+  id            String         @id @default(uuid())
+  username      String         @unique
+  email         String         @unique
+  password      String
+  tasks         Task[]         @relation("UserTasks")
+  tokenVersion  Int            @default(0)
+  refreshTokens RefreshToken[] @relation("UserRefreshTokens")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  user      User     @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Task {
