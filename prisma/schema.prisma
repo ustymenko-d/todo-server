@@ -8,12 +8,13 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  username      String         @unique
-  email         String         @unique
-  password      String
+  id           String @id @default(uuid())
+  username     String @unique
+  email        String @unique
+  password     String
+  tokenVersion Int    @default(1)
+
   tasks         Task[]         @relation("UserTasks")
-  tokenVersion  Int            @default(1)
   refreshTokens RefreshToken[] @relation("UserRefreshTokens")
 }
 
@@ -24,7 +25,8 @@ model RefreshToken {
   createdAt DateTime @default(now())
   expiresAt DateTime
   revoked   Boolean  @default(false)
-  user      User     @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Task {
@@ -33,12 +35,13 @@ model Task {
   description  String?
   status       TaskStatus
   userId       String
-  user         User       @relation("UserTasks", fields: [userId], references: [id])
   parentTaskId String?
-  parentTask   Task?      @relation("Subtasks", fields: [parentTaskId], references: [id])
-  subtasks     Task[]     @relation("Subtasks")
   createdAt    DateTime   @default(now())
   expiresAt    DateTime?
+
+  user       User   @relation("UserTasks", fields: [userId], references: [id])
+  parentTask Task?  @relation("Subtasks", fields: [parentTaskId], references: [id])
+  subtasks   Task[] @relation("Subtasks")
 }
 
 enum TaskStatus {
