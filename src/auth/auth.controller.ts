@@ -10,7 +10,16 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthRequest, RefreshRequest } from './auth.interfaces';
+
+interface AuthRequest {
+  email: string;
+  password: string;
+}
+
+interface RefreshRequest {
+  userId: string;
+  refreshToken: string;
+}
 
 @Controller('auth')
 export class AuthController {
