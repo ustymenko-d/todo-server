@@ -30,12 +30,15 @@ model RefreshToken {
 model Task {
   id           String     @id @default(uuid())
   title        String
+  description  String?
   status       TaskStatus
   userId       String
   user         User       @relation("UserTasks", fields: [userId], references: [id])
   parentTaskId String?
   parentTask   Task?      @relation("Subtasks", fields: [parentTaskId], references: [id])
   subtasks     Task[]     @relation("Subtasks")
+  createdAt    DateTime   @default(now())
+  expiresAt    DateTime?
 }
 
 enum TaskStatus {
