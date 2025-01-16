@@ -39,8 +39,8 @@ model Task {
   createdAt    DateTime   @default(now())
   expiresAt    DateTime?
 
-  user       User   @relation("UserTasks", fields: [userId], references: [id])
-  parentTask Task?  @relation("Subtasks", fields: [parentTaskId], references: [id])
+  user       User   @relation("UserTasks", fields: [userId], references: [id], onDelete: Cascade)
+  parentTask Task?  @relation("Subtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
   subtasks   Task[] @relation("Subtasks")
 }
 
