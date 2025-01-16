@@ -28,12 +28,12 @@ model RefreshToken {
 }
 
 model Task {
-  id           Int        @id @default(autoincrement())
+  id           String     @id @default(uuid())
   title        String
   status       TaskStatus
   userId       String
   user         User       @relation("UserTasks", fields: [userId], references: [id])
-  parentTaskId Int?
+  parentTaskId String?
   parentTask   Task?      @relation("Subtasks", fields: [parentTaskId], references: [id])
   subtasks     Task[]     @relation("Subtasks")
 }
