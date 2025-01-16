@@ -13,7 +13,7 @@ model User {
   email         String         @unique
   password      String
   tasks         Task[]         @relation("UserTasks")
-  tokenVersion  Int            @default(0)
+  tokenVersion  Int            @default(1)
   refreshTokens RefreshToken[] @relation("UserRefreshTokens")
 }
 
