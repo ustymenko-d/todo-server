@@ -101,6 +101,11 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async logout(userId: string) {
+    await this.revokePreviousTokens(userId);
+    return 'Successful log out';
+  }
+
   async deleteUser(userId: string, tokenVersion: number) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
 

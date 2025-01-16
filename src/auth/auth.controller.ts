@@ -34,7 +34,20 @@ export class AuthController {
       const { email, password } = body;
       return this.authService.login(email, password);
     } catch {
-      throw new UnauthorizedException('Login failed');
+      throw new UnauthorizedException('Log in failed');
+    }
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('logout')
+  async logout(@Req() req) {
+    const { userId } = req.user;
+
+    this.validateUser(userId);
+    try {
+      return await this.authService.logout(userId);
+    } catch {
+      throw new UnauthorizedException('Log out failed');
     }
   }
 
@@ -42,7 +55,9 @@ export class AuthController {
   @Delete('delete')
   async deleteUser(@Req() req) {
     const { userId, tokenVersion } = req.user;
-    this.validateUser(userId, tokenVersion);
+
+    this.validateUser(userId);
+    this.validateTokenVersion(tokenVersion);
 
     try {
       return await this.authService.deleteUser(userId, tokenVersion);
@@ -63,10 +78,17 @@ export class AuthController {
     }
   }
 
-  private validateUser(userId: string, tokenVersion: number) {
-    if (!userId || tokenVersion === undefined) {
-      this.logger.error('Invalid user ID or token version');
-      throw new UnauthorizedException('Invalid user ID or token version');
+  private validateUser(userId: string) {
+    if (!userId) {
+      this.logger.error('Invalid user ID');
+      throw new UnauthorizedException('Invalid user ID');
+    }
+  }
+
+  private validateTokenVersion(tokenVersion: number) {
+    if (tokenVersion === undefined) {
+      this.logger.error('Invalid token version');
+      throw new UnauthorizedException('Invalid token version');
     }
   }
 }
