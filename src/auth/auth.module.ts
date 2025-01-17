@@ -18,7 +18,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PrismaModule,
     ScheduleModule.forRoot(),
   ],
-  providers: [AuthService, PrismaService, JwtStrategy],
   controllers: [AuthController],
+  providers: [AuthService, PrismaService, JwtStrategy],
 })
 export class AuthModule {}

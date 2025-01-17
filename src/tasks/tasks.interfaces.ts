@@ -1,7 +1,4 @@
-enum TaskStatus {
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETE = 'COMPLETE',
-}
+export type TaskStatus = 'IN_PROGRESS' | 'COMPLETED';
 
 export interface ITaskBase {
   title: string;
@@ -15,4 +12,13 @@ export interface ITaskBase {
 export interface ITask extends ITaskBase {
   id: string;
   createdAt: Date;
+}
+
+export interface IGetTasksRequest {
+  page: number;
+  limit: number;
+  status?: TaskStatus;
+  userId?: string;
+  topLayerTasks?: boolean;
+  taskId: string;
 }

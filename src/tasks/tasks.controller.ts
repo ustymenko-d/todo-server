@@ -1,7 +1,15 @@
-import { Body, Controller, Delete, Logger, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Logger,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { ITaskBase } from './tasks.interfaces';
-import { CreateTaskResponseDto } from './dto/create-task-response.dto';
+import { IGetTasksRequest, ITask, ITaskBase } from './tasks.interfaces';
+import { TaskResponseDto } from './dto/task-response.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -9,13 +17,35 @@ export class TasksController {
 
   constructor(private readonly tasksService: TasksService) {}
 
+  @Post('get')
+  async get(@Body() body: IGetTasksRequest) {
+    try {
+      const tasksData = await this.tasksService.getTasks(body);
+      return { success: true, tasksData };
+    } catch (error) {
+      this.logger.error('Error when fetching tasks: ', error);
+      throw error;
+    }
+  }
+
   @Post()
-  async create(@Body() body: ITaskBase): Promise<CreateTaskResponseDto> {
+  async create(@Body() body: ITaskBase): Promise<TaskResponseDto> {
     try {
       const createdTask = await this.tasksService.createTask(body);
       return { success: true, task: createdTask };
     } catch (error) {
       this.logger.error('Error when creating a task: ', error);
+      throw error;
+    }
+  }
+
+  @Put()
+  async edit(@Body() body: ITask): Promise<TaskResponseDto> {
+    try {
+      const updatedTask = await this.tasksService.editeTask(body);
+      return { success: true, task: updatedTask };
+    } catch (error) {
+      this.logger.error('Error when editing a task: ', error);
       throw error;
     }
   }

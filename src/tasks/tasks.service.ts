@@ -1,13 +1,64 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { ITask, ITaskBase } from './tasks.interfaces';
+import { IGetTasksRequest, ITask, ITaskBase } from './tasks.interfaces';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  async getTasks(payload: IGetTasksRequest) {
+    try {
+      const { page, limit, status, userId, topLayerTasks, taskId } = payload;
+
+      const skip = (page - 1) * limit;
+      const where: Prisma.TaskWhereInput = {};
+
+      if (taskId) {
+        where.id = taskId;
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (userId) {
+        where.userId = userId;
+      }
+
+      if (topLayerTasks) {
+        where.parentTaskId = null;
+      }
+
+      const [tasks, total] = await this.prisma.$transaction([
+        this.prisma.task.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            // user: true,
+            // parentTask: true,
+            subtasks: true,
+          },
+        }),
+        this.prisma.task.count({ where }),
+      ]);
+
+      return {
+        tasks,
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      this.logger.error('Error while fetching tasks', error.stack);
+      throw new Error('Fetching tasks failed');
+    }
+  }
 
   async createTask(taskBody: ITaskBase): Promise<ITask> {
     try {
@@ -23,7 +74,7 @@ export class TasksService {
         });
 
         if (!parentTask) {
-          throw new Error('Parent task not found');
+          throw new Error(`Parent task with id ${parentTaskId} not found`);
         }
       }
 
@@ -48,6 +99,28 @@ export class TasksService {
     }
   }
 
+  async editeTask(payload: ITask): Promise<ITask> {
+    try {
+      const { id } = payload;
+
+      const targetTask = await this.prisma.task.findUnique({
+        where: { id },
+      });
+
+      if (!targetTask) {
+        throw new Error(`Task with id ${id} not found`);
+      }
+
+      return await this.prisma.task.update({
+        where: { id },
+        data: { ...payload },
+      });
+    } catch (error) {
+      this.logger.error('Error while editing task', error.stack);
+      throw new Error('Task editing failed');
+    }
+  }
+
   async deleteTask(taskId: string) {
     try {
       const deletedTask = await this.prisma.task.delete({
@@ -58,7 +131,7 @@ export class TasksService {
       return deletedTask;
     } catch (error) {
       this.logger.error('Error while deleting task', error.stack);
-      throw new Error('Task creation failed');
+      throw new Error('Task deleting failed');
     }
   }
 }

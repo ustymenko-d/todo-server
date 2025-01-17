@@ -1,6 +1,6 @@
 import { ITask } from '../tasks.interfaces';
 
-export class CreateTaskResponseDto {
+export class TaskResponseDto {
   success: boolean;
   task: ITask;
 }

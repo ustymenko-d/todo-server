@@ -10,22 +10,13 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-
-interface AuthRequest {
-  email: string;
-  password: string;
-}
-
-interface RefreshRequest {
-  userId: string;
-  refreshToken: string;
-}
+import { AuthRequest, RefreshRequest } from './auth.interfaces';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
-
   private readonly logger = new Logger(AuthService.name);
+
+  constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   register(@Body() body: AuthRequest) {
@@ -51,8 +42,8 @@ export class AuthController {
   @Post('logout')
   async logout(@Req() req) {
     const { userId } = req.user;
-
     this.validateUser(userId);
+
     try {
       return await this.authService.logout(userId);
     } catch {

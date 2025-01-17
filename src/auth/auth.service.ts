@@ -1,9 +1,10 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
+import * as bcrypt from 'bcrypt';
+import { IRefreshToken, ITokenPair, IUser } from './auth.interfaces';
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  private async hashPassword(password: string) {
+  private async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
 
@@ -32,11 +33,11 @@ export class AuthService {
   private async comparePasswords(
     plainTextPassword: string,
     hashedPassword: string,
-  ) {
+  ): Promise<boolean> {
     return bcrypt.compare(plainTextPassword, hashedPassword);
   }
 
-  private async incrementTokenVersion(user) {
+  private async incrementTokenVersion(user: IUser): Promise<IUser> {
     const { id, tokenVersion } = user;
 
     await this.prisma.user.update({
@@ -47,7 +48,7 @@ export class AuthService {
     return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  private createToken(user: any) {
+  private createToken(user: IUser) {
     const payload = {
       username: user.username,
       sub: user.id,
@@ -56,7 +57,7 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
-  private async createRefreshToken(userId: string) {
+  private async createRefreshToken(userId: string): Promise<string> {
     const token = uuidv4();
     const hashedToken = await bcrypt.hash(token, 10);
     const expiresAt = new Date();
@@ -78,7 +79,7 @@ export class AuthService {
     });
   }
 
-  async register(email: string, password: string) {
+  async register(email: string, password: string): Promise<ITokenPair> {
     const hashedPassword = await this.hashPassword(password);
     const user = await this.createUser(email, hashedPassword);
     const refreshToken = await this.createRefreshToken(user.id);
@@ -87,7 +88,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<ITokenPair> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !(await this.comparePasswords(password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
@@ -101,7 +102,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async logout(userId: string) {
+  async logout(userId: string): Promise<string> {
     await this.revokePreviousTokens(userId);
     return 'Successful log out';
   }
@@ -121,7 +122,10 @@ export class AuthService {
     return { message: 'User deleted successfully' };
   }
 
-  async validateRefreshToken(userId: string, token: string) {
+  async validateRefreshToken(
+    userId: string,
+    token: string,
+  ): Promise<IRefreshToken> {
     const refreshToken = await this.prisma.refreshToken.findFirst({
       where: { userId, revoked: false, expiresAt: { gt: new Date() } },
     });
@@ -139,7 +143,10 @@ export class AuthService {
     return refreshToken;
   }
 
-  async refreshToken(userId: string, refreshToken: string) {
+  async refreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<ITokenPair> {
     try {
       await this.validateRefreshToken(userId, refreshToken);
 
