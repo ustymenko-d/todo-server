@@ -8,8 +8,12 @@ import {
   Put,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { IGetTasksRequest, ITask, ITaskBase } from './tasks.interfaces';
-import { TaskResponseDto } from './dto/task-response.dto';
+import {
+  GetTasksRequestDto,
+  TaskBaseDto,
+  TaskDto,
+  TaskResponseDto,
+} from './tasks.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -18,7 +22,7 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post('get')
-  async get(@Body() body: IGetTasksRequest) {
+  async get(@Body() body: GetTasksRequestDto) {
     try {
       const tasksData = await this.tasksService.getTasks(body);
       return { success: true, tasksData };
@@ -29,7 +33,7 @@ export class TasksController {
   }
 
   @Post()
-  async create(@Body() body: ITaskBase): Promise<TaskResponseDto> {
+  async create(@Body() body: TaskBaseDto): Promise<TaskResponseDto> {
     try {
       const createdTask = await this.tasksService.createTask(body);
       return { success: true, task: createdTask };
@@ -40,7 +44,7 @@ export class TasksController {
   }
 
   @Put()
-  async edit(@Body() body: ITask): Promise<TaskResponseDto> {
+  async edit(@Body() body: TaskDto): Promise<TaskResponseDto> {
     try {
       const updatedTask = await this.tasksService.editeTask(body);
       return { success: true, task: updatedTask };

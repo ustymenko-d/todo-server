@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { IGetTasksRequest, ITask, ITaskBase } from './tasks.interfaces';
 import { Prisma } from '@prisma/client';
+import { GetTasksRequestDto, TaskBaseDto, TaskDto } from './tasks.dto';
 
 @Injectable()
 export class TasksService {
@@ -10,7 +10,7 @@ export class TasksService {
 
   constructor(private prisma: PrismaService) {}
 
-  async getTasks(payload: IGetTasksRequest) {
+  async getTasks(payload: GetTasksRequestDto) {
     try {
       const { page, limit, status, userId, topLayerTasks, taskId } = payload;
 
@@ -60,7 +60,7 @@ export class TasksService {
     }
   }
 
-  async createTask(taskBody: ITaskBase): Promise<ITask> {
+  async createTask(taskBody: TaskBaseDto): Promise<TaskDto> {
     try {
       const { userId, parentTaskId } = taskBody;
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -78,7 +78,7 @@ export class TasksService {
         }
       }
 
-      const newTask: ITask = {
+      const newTask: TaskDto = {
         ...taskBody,
         id: uuidv4(),
         createdAt: new Date(),
@@ -99,7 +99,7 @@ export class TasksService {
     }
   }
 
-  async editeTask(payload: ITask): Promise<ITask> {
+  async editeTask(payload: TaskDto): Promise<TaskDto> {
     try {
       const { id } = payload;
 

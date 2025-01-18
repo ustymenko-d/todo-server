@@ -4,7 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import { IRefreshToken, ITokenPair, IUser } from './auth.interfaces';
+import { RefreshTokenDto, TokenPairDto, UserDto } from './auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -37,7 +37,7 @@ export class AuthService {
     return bcrypt.compare(plainTextPassword, hashedPassword);
   }
 
-  private async incrementTokenVersion(user: IUser): Promise<IUser> {
+  private async incrementTokenVersion(user: UserDto): Promise<UserDto> {
     const { id, tokenVersion } = user;
 
     await this.prisma.user.update({
@@ -48,7 +48,7 @@ export class AuthService {
     return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  private createToken(user: IUser) {
+  private createToken(user: UserDto) {
     const payload = {
       username: user.username,
       sub: user.id,
@@ -79,7 +79,7 @@ export class AuthService {
     });
   }
 
-  async register(email: string, password: string): Promise<ITokenPair> {
+  async register(email: string, password: string): Promise<TokenPairDto> {
     const hashedPassword = await this.hashPassword(password);
     const user = await this.createUser(email, hashedPassword);
     const refreshToken = await this.createRefreshToken(user.id);
@@ -88,7 +88,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(email: string, password: string): Promise<ITokenPair> {
+  async login(email: string, password: string): Promise<TokenPairDto> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !(await this.comparePasswords(password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
@@ -125,7 +125,7 @@ export class AuthService {
   async validateRefreshToken(
     userId: string,
     token: string,
-  ): Promise<IRefreshToken> {
+  ): Promise<RefreshTokenDto> {
     const refreshToken = await this.prisma.refreshToken.findFirst({
       where: { userId, revoked: false, expiresAt: { gt: new Date() } },
     });
@@ -146,7 +146,7 @@ export class AuthService {
   async refreshToken(
     userId: string,
     refreshToken: string,
-  ): Promise<ITokenPair> {
+  ): Promise<TokenPairDto> {
     try {
       await this.validateRefreshToken(userId, refreshToken);
 

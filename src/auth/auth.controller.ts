@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthRequest, RefreshRequest } from './auth.interfaces';
+import { AuthBaseDto, JwtUserDto, UpdateTokensDto } from './auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,7 +19,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  register(@Body() body: AuthRequest) {
+  register(@Body() body: AuthBaseDto) {
     try {
       const { email, password } = body;
       return this.authService.register(email, password);
@@ -29,7 +29,7 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() body: AuthRequest) {
+  login(@Body() body: AuthBaseDto) {
     try {
       const { email, password } = body;
       return this.authService.login(email, password);
@@ -40,7 +40,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
-  async logout(@Req() req) {
+  async logout(@Req() req: { user: JwtUserDto }) {
     const { userId } = req.user;
     this.validateUser(userId);
 
@@ -53,7 +53,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Delete('delete')
-  async deleteUser(@Req() req) {
+  async deleteUser(@Req() req: { user: JwtUserDto }) {
     const { userId, tokenVersion } = req.user;
 
     this.validateUser(userId);
@@ -67,7 +67,7 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Body() body: RefreshRequest) {
+  async refresh(@Body() body: UpdateTokensDto) {
     const { userId, refreshToken } = body;
 
     try {
