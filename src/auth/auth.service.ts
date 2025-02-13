@@ -50,7 +50,8 @@ export class AuthService {
 
   private createToken(user: UserDto) {
     const payload = {
-      username: user.username,
+      // username: user.username,
+      email: user.email,
       sub: user.id,
       tokenVersion: user.tokenVersion,
     };
