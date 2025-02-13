@@ -18,11 +18,11 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
-  register(@Body() body: AuthBaseDto) {
+  @Post('signup')
+  signup(@Body() body: AuthBaseDto) {
     try {
       const { email, password } = body;
-      return this.authService.register(email, password);
+      return this.authService.signup(email, password);
     } catch {
       throw new UnauthorizedException('Registration failed');
     }

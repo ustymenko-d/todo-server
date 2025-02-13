@@ -79,7 +79,7 @@ export class AuthService {
     });
   }
 
-  async register(email: string, password: string): Promise<TokenPairDto> {
+  async signup(email: string, password: string): Promise<TokenPairDto> {
     const hashedPassword = await this.hashPassword(password);
     const user = await this.createUser(email, hashedPassword);
     const refreshToken = await this.createRefreshToken(user.id);
