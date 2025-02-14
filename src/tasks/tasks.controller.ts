@@ -24,6 +24,7 @@ export class TasksController {
 
   constructor(private readonly tasksService: TasksService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('get')
   async get(@Body() body: GetTasksRequestDto) {
     try {

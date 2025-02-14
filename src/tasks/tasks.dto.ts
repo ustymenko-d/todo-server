@@ -1,5 +1,5 @@
 import {
-  IsEnum,
+  IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -7,12 +7,10 @@ import {
   MinLength,
 } from 'class-validator';
 
-type TaskStatus = 'IN_PROGRESS' | 'COMPLETED';
-
 interface ITaskBase {
   title: string;
   description?: string | null;
-  status: TaskStatus;
+  completed: boolean;
   userId: string;
   parentTaskId?: string | null;
   expiresAt?: Date | null;
@@ -28,8 +26,8 @@ export class TaskBaseDto implements ITaskBase {
   @IsOptional()
   description?: string | null;
 
-  @IsEnum(['IN_PROGRESS', 'COMPLETED'], { message: 'Invalid status.' })
-  status: TaskStatus;
+  @IsBoolean({ message: 'Invalid value.' })
+  completed: boolean;
 
   @IsString()
   @IsNotEmpty({ message: 'The user ID is required.' })
@@ -64,9 +62,9 @@ export class GetTasksRequestDto {
   @IsNumber()
   limit: number;
 
-  @IsEnum(['IN_PROGRESS', 'COMPLETED'], { message: 'Invalid status.' })
+  @IsBoolean({ message: 'Invalid value.' })
   @IsOptional()
-  status?: TaskStatus;
+  completed: boolean;
 
   @IsString()
   @IsOptional()

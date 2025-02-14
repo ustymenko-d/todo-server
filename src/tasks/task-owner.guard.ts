@@ -15,7 +15,7 @@ export class TaskOwnerGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const userId = request.user?.userId;
-    const taskId = request.params.taskId;
+    const taskId = request.params.taskId || request.body.id;
 
     if (!userId || !taskId) {
       this.logger.warn('Invalid request parameters');

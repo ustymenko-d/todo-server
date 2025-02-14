@@ -12,7 +12,7 @@ export class TasksService {
 
   async getTasks(payload: GetTasksRequestDto) {
     try {
-      const { page, limit, status, userId, topLayerTasks, taskId } = payload;
+      const { page, limit, completed, userId, topLayerTasks, taskId } = payload;
 
       const skip = (page - 1) * limit;
       const where: Prisma.TaskWhereInput = {};
@@ -21,8 +21,8 @@ export class TasksService {
         where.id = taskId;
       }
 
-      if (status) {
-        where.status = status;
+      if (completed) {
+        where.completed = completed;
       }
 
       if (userId) {
@@ -64,8 +64,9 @@ export class TasksService {
     try {
       const { userId, parentTaskId } = taskBody;
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
       if (!user) {
-        throw new Error('User not found');
+        throw new Error(`User (${userId}) not found`);
       }
 
       if (parentTaskId) {
