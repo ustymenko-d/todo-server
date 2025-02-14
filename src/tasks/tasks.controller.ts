@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import {
@@ -14,6 +15,8 @@ import {
   TaskDto,
   TaskResponseDto,
 } from './tasks.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { TaskOwnerGuard } from './task-owner.guard';
 
 @Controller('tasks')
 export class TasksController {
@@ -32,6 +35,7 @@ export class TasksController {
     }
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   async create(@Body() body: TaskBaseDto): Promise<TaskResponseDto> {
     try {
@@ -43,6 +47,7 @@ export class TasksController {
     }
   }
 
+  @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Put()
   async edit(@Body() body: TaskDto): Promise<TaskResponseDto> {
     try {
@@ -54,6 +59,7 @@ export class TasksController {
     }
   }
 
+  @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
   async delete(@Param('taskId') taskId: string) {
     try {

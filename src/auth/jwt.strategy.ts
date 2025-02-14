@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       payload?.tokenVersion === undefined
     ) {
       this.logger.warn('Invalid JWT payload');
-      throw new UnauthorizedException('Invalid token payload');
+      throw new UnauthorizedException('Invalid JWT payload');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -36,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user) {
       this.logger.warn(`User not found (ID: ${payload.sub})`);
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException(`User not found(ID: ${payload.sub})`);
     }
 
     if (user.tokenVersion !== payload.tokenVersion) {
