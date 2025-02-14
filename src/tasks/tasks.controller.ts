@@ -4,6 +4,7 @@ import {
   Delete,
   Logger,
   Param,
+  Patch,
   Post,
   Put,
   UseGuards,
@@ -56,6 +57,23 @@ export class TasksController {
       return { success: true, task: updatedTask };
     } catch (error) {
       this.logger.error('Error when editing a task: ', error);
+      throw error;
+    }
+  }
+
+  @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
+  @Patch(':taskId')
+  async toggleStatus(
+    @Param('taskId') taskId: string,
+  ): Promise<TaskResponseDto> {
+    try {
+      const updatedTask = await this.tasksService.toggleStatus(taskId);
+      return { success: true, task: updatedTask };
+    } catch (error) {
+      this.logger.error(
+        `Error when change status of the task (${taskId}): `,
+        error,
+      );
       throw error;
     }
   }

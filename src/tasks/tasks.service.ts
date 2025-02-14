@@ -122,6 +122,32 @@ export class TasksService {
     }
   }
 
+  async toggleStatus(taskId: string) {
+    try {
+      const task = await this.prisma.task.findUnique({
+        where: { id: taskId },
+        select: { completed: true },
+      });
+
+      if (!task) {
+        throw new Error(`Task with id ${taskId} not found`);
+      }
+
+      const updatedTask = await this.prisma.task.update({
+        where: { id: taskId },
+        data: { completed: !task.completed },
+      });
+
+      return updatedTask;
+    } catch (error) {
+      this.logger.error(
+        `Error while change status of the task (${taskId})`,
+        error.stack,
+      );
+      throw new Error('Task editing failed');
+    }
+  }
+
   async deleteTask(taskId: string) {
     try {
       const deletedTask = await this.prisma.task.delete({
