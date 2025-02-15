@@ -23,25 +23,12 @@ class PasswordBaseDto {
   @Matches(/(?=.*\d)/, {
     message: 'The password must contain at least one digit.',
   })
-  // @Matches(/(?=.*[@$!%*?&])/, {
-  //   message: 'The password must contain at least one special symbol.',
-  // })
   password: string;
 }
 
 export class AuthBaseDto extends PasswordBaseDto {
   @IsEmail({}, { message: 'Invalid email address.' })
   email: string;
-}
-
-export class UpdateTokensDto {
-  @IsString()
-  @IsNotEmpty({ message: 'User ID is required.' })
-  userId: string;
-
-  @IsString()
-  @IsNotEmpty({ message: 'Refresh token is required.' })
-  refreshToken: string;
 }
 
 export class RefreshTokenDto {
@@ -74,11 +61,13 @@ export class JwtUserDto {
   tokenVersion: number;
 }
 
-export class TokenPairDto {
+export class AccessTokenDto {
   @IsString()
   @IsNotEmpty()
   accessToken: string;
+}
 
+export class TokenPairDto extends AccessTokenDto {
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
@@ -97,4 +86,10 @@ export class UserDto extends PasswordBaseDto {
 
   @IsNumber()
   tokenVersion: number;
+}
+
+export class ResponseStatusDto {
+  @IsString()
+  @IsNotEmpty()
+  message: string;
 }

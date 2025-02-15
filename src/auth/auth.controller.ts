@@ -6,11 +6,18 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
+  Res,
   Logger,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthBaseDto, JwtUserDto, UpdateTokensDto } from './auth.dto';
+import {
+  AccessTokenDto,
+  AuthBaseDto,
+  JwtUserDto,
+  ResponseStatusDto,
+} from './auth.dto';
+import { Request, Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -18,21 +25,51 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  private setRefreshTokenCookie(res: Response, refreshToken: string) {
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  }
+
   @Post('signup')
-  signup(@Body() body: AuthBaseDto) {
+  async signup(
+    @Body() body: AuthBaseDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenDto> {
     try {
       const { email, password } = body;
-      return this.authService.signup(email, password);
+      const { accessToken, refreshToken } = await this.authService.signup(
+        email,
+        password,
+      );
+
+      this.setRefreshTokenCookie(res, refreshToken);
+
+      return { accessToken };
     } catch {
       throw new UnauthorizedException('Registration failed');
     }
   }
 
   @Post('login')
-  login(@Body() body: AuthBaseDto) {
+  async login(
+    @Body() body: AuthBaseDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenDto> {
     try {
       const { email, password } = body;
-      return this.authService.login(email, password);
+      const { accessToken, refreshToken } = await this.authService.login(
+        email,
+        password,
+      );
+
+      this.setRefreshTokenCookie(res, refreshToken);
+
+      return { accessToken };
     } catch {
       throw new UnauthorizedException('Log in failed');
     }
@@ -40,12 +77,23 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
-  async logout(@Req() req: { user: JwtUserDto }) {
-    const { userId } = req.user;
-    this.validateUser(userId);
-
+  async logout(
+    @Req() req: { user: JwtUserDto },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ResponseStatusDto> {
     try {
-      return await this.authService.logout(userId);
+      const { userId } = req.user;
+
+      await this.authService.logout(userId);
+
+      res.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+      });
+
+      return { message: 'Successfully logout' };
     } catch {
       throw new UnauthorizedException('Log out failed');
     }
@@ -53,42 +101,39 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Delete('delete')
-  async deleteUser(@Req() req: { user: JwtUserDto }) {
-    const { userId, tokenVersion } = req.user;
-
-    this.validateUser(userId);
-    this.validateTokenVersion(tokenVersion);
-
+  async deleteUser(
+    @Req() req: { user: JwtUserDto },
+  ): Promise<ResponseStatusDto> {
     try {
-      return await this.authService.deleteUser(userId, tokenVersion);
+      const { userId } = req.user;
+      await this.authService.deleteUser(userId);
+      return { message: `User (${userId}) deleted successfully` };
     } catch {
       throw new UnauthorizedException('User deletion failed');
     }
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('refresh')
-  async refresh(@Body() body: UpdateTokensDto) {
-    const { userId, refreshToken } = body;
-
+  async refresh(
+    @Req() req: Request & { user: JwtUserDto },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenDto> {
     try {
-      const tokens = await this.authService.refreshToken(userId, refreshToken);
-      return tokens;
+      const { userId } = req.user;
+      const refreshToken = req.cookies?.refresh_token;
+
+      if (!refreshToken)
+        throw new UnauthorizedException('No refresh token found');
+
+      const { accessToken, refreshToken: newRefreshToken } =
+        await this.authService.refreshToken(userId, refreshToken);
+
+      this.setRefreshTokenCookie(res, newRefreshToken);
+
+      return { accessToken };
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
-    }
-  }
-
-  private validateUser(userId: string) {
-    if (!userId) {
-      this.logger.error('Invalid user ID');
-      throw new UnauthorizedException('Invalid user ID');
-    }
-  }
-
-  private validateTokenVersion(tokenVersion: number) {
-    if (tokenVersion === undefined) {
-      this.logger.error('Invalid token version');
-      throw new UnauthorizedException('Invalid token version');
     }
   }
 }

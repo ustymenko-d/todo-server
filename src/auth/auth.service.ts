@@ -50,11 +50,11 @@ export class AuthService {
 
   private createToken(user: UserDto) {
     const payload = {
-      // username: user.username,
       email: user.email,
       sub: user.id,
       tokenVersion: user.tokenVersion,
     };
+
     return this.jwtService.sign(payload);
   }
 
@@ -63,6 +63,7 @@ export class AuthService {
     const hashedToken = await bcrypt.hash(token, 10);
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
+
     await this.prisma.refreshToken.create({
       data: {
         userId,
@@ -70,6 +71,7 @@ export class AuthService {
         expiresAt,
       },
     });
+
     return token;
   }
 
@@ -81,46 +83,55 @@ export class AuthService {
   }
 
   async signup(email: string, password: string): Promise<TokenPairDto> {
-    const hashedPassword = await this.hashPassword(password);
-    const user = await this.createUser(email, hashedPassword);
-    const refreshToken = await this.createRefreshToken(user.id);
-    const accessToken = this.createToken(user);
+    try {
+      const hashedPassword = await this.hashPassword(password);
+      const user = await this.createUser(email, hashedPassword);
+      const refreshToken = await this.createRefreshToken(user.id);
+      const accessToken = this.createToken(user);
 
-    return { accessToken, refreshToken };
+      return { accessToken, refreshToken };
+    } catch (error) {
+      this.logger.error('Signup failed', error.stack);
+      throw new UnauthorizedException('Registration failed');
+    }
   }
 
   async login(email: string, password: string): Promise<TokenPairDto> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user || !(await this.comparePasswords(password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
+    try {
+      const user = await this.prisma.user.findUnique({ where: { email } });
+
+      if (!user || !(await this.comparePasswords(password, user.password)))
+        throw new UnauthorizedException('Invalid credentials');
+
+      const updatedUser = await this.incrementTokenVersion(user);
+
+      await this.revokePreviousTokens(user.id);
+
+      const refreshToken = await this.createRefreshToken(user.id);
+      const accessToken = this.createToken(updatedUser);
+
+      return { accessToken, refreshToken };
+    } catch (error) {
+      this.logger.error('Login failed', error.stack);
+      throw new UnauthorizedException('Login failed');
     }
-    const updatedUser = await this.incrementTokenVersion(user);
-
-    await this.revokePreviousTokens(user.id);
-
-    const refreshToken = await this.createRefreshToken(user.id);
-    const accessToken = this.createToken(updatedUser);
-    return { accessToken, refreshToken };
   }
 
-  async logout(userId: string): Promise<string> {
+  async logout(userId: string) {
     await this.revokePreviousTokens(userId);
-    return 'Successful log out';
   }
 
-  async deleteUser(userId: string, tokenVersion: number) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  async deleteUser(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+      if (!user) throw new UnauthorizedException('User not found');
+
+      await this.prisma.user.delete({ where: { id: userId } });
+    } catch (error) {
+      this.logger.error('User deletion failed', error.stack);
+      throw new UnauthorizedException('User deletion failed');
     }
-
-    if (user.tokenVersion !== tokenVersion) {
-      throw new UnauthorizedException('Invalid token version');
-    }
-
-    await this.prisma.user.delete({ where: { id: userId } });
-    return { message: 'User deleted successfully' };
   }
 
   async validateRefreshToken(
@@ -131,15 +142,13 @@ export class AuthService {
       where: { userId, revoked: false, expiresAt: { gt: new Date() } },
     });
 
-    if (!refreshToken) {
+    if (!refreshToken)
       throw new UnauthorizedException('Invalid or expired refresh token');
-    }
 
     const isValid = await bcrypt.compare(token, refreshToken.token);
 
-    if (!isValid) {
+    if (!isValid)
       throw new UnauthorizedException('Invalid or expired refresh token');
-    }
 
     return refreshToken;
   }
@@ -150,23 +159,19 @@ export class AuthService {
   ): Promise<TokenPairDto> {
     try {
       await this.validateRefreshToken(userId, refreshToken);
-
       await this.revokePreviousTokens(userId);
 
       const newRefreshToken = await this.createRefreshToken(userId);
-
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
+      if (!user) throw new UnauthorizedException('User not found');
 
       const updatedUser = await this.incrementTokenVersion(user);
-
       const newAccessToken = this.createToken(updatedUser);
 
       return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-    } catch {
+    } catch (error) {
+      this.logger.error('Refresh token failed', error.stack);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
