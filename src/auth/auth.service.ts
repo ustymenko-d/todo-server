@@ -118,7 +118,18 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    await this.revokePreviousTokens(userId);
+    try {
+      await this.revokePreviousTokens(userId);
+
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user) throw new UnauthorizedException('User not found');
+
+      await this.incrementTokenVersion(user);
+    } catch (error) {
+      this.logger.error('Logout failed', error.stack);
+      throw new UnauthorizedException('Logout failed');
+    }
   }
 
   async deleteUser(userId: string) {
