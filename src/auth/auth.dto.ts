@@ -10,7 +10,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-class PasswordBaseDto {
+export class PasswordBaseDto {
   @IsString()
   @MinLength(8, { message: 'The password must be at least 8 characters long.' })
   @MaxLength(64, { message: 'The password must not exceed 64 characters.' })

@@ -10,6 +10,7 @@ import {
   Logger,
   Query,
   Get,
+  Patch,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,6 +18,7 @@ import {
   AccessTokenDto,
   AuthBaseDto,
   JwtUserDto,
+  PasswordBaseDto,
   ResponseStatusDto,
   SignUpDto,
 } from './auth.dto';
@@ -135,6 +137,31 @@ export class AuthController {
       return { message: `User (${userId}) deleted successfully.` };
     } catch {
       throw new UnauthorizedException('User deletion failed.');
+    }
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(
+    @Body('email') email: string,
+  ): Promise<ResponseStatusDto> {
+    try {
+      await this.authService.sendResetPasswordEmail(email);
+      return { message: 'Reset password email sent' };
+    } catch {
+      throw new UnauthorizedException('Reset password email sent failed.');
+    }
+  }
+
+  @Patch('reset-password')
+  async resetPassword(
+    @Query('token') token: string,
+    @Body() passwordDto: PasswordBaseDto,
+  ): Promise<ResponseStatusDto> {
+    try {
+      await this.authService.resetPassword(token, passwordDto);
+      return { message: 'Password updated successfully' };
+    } catch {
+      throw new UnauthorizedException('Password update failed.');
     }
   }
 

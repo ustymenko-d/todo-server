@@ -5,7 +5,12 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
-import { RefreshTokenDto, TokenPairDto, UserDto } from './auth.dto';
+import {
+  PasswordBaseDto,
+  RefreshTokenDto,
+  TokenPairDto,
+  UserDto,
+} from './auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -205,6 +210,65 @@ export class AuthService {
     } catch (error) {
       this.logger.error('User deletion failed', error.stack);
       throw new UnauthorizedException('User deletion failed');
+    }
+  }
+
+  async sendResetPasswordEmail(email: string) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { email } });
+
+      if (!user) throw new UnauthorizedException('User not found');
+
+      const resetToken = this.jwtService.sign(
+        { userId: user.id, tokenVersion: user.tokenVersion },
+        { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
+      );
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: `Reset Your Password on ${process.env.FRONTEND_URL}`,
+        html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link is valid for 15 minutes.</p>`,
+      });
+
+      this.logger.log(`Password reset email sent to ${email}`);
+    } catch (error) {
+      this.logger.error('Password reset email sent failed', error.stack);
+      throw new UnauthorizedException('Password reset email sent failed');
+    }
+  }
+
+  async resetPassword(token: string, newPasswordDto: PasswordBaseDto) {
+    try {
+      const { userId, tokenVersion } = this.jwtService.verify(token, {
+        secret: process.env.JWT_RESET_SECRET,
+      });
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId, tokenVersion },
+      });
+
+      if (!user) throw new UnauthorizedException('User not found');
+
+      const hashedPassword = await this.hashData(newPasswordDto.password);
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword, tokenVersion: { increment: 1 } },
+      });
+    } catch (error) {
+      this.logger.error('Reset password failed', error.stack);
+      throw new UnauthorizedException('Reset password failed');
     }
   }
 
