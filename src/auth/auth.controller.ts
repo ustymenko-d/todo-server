@@ -8,6 +8,8 @@ import {
   UnauthorizedException,
   Res,
   Logger,
+  Query,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,6 +18,7 @@ import {
   AuthBaseDto,
   JwtUserDto,
   ResponseStatusDto,
+  SignUpDto,
 } from './auth.dto';
 import { Request, Response } from 'express';
 
@@ -39,7 +42,7 @@ export class AuthController {
   async signup(
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AccessTokenDto> {
+  ): Promise<SignUpDto> {
     try {
       const { email, password } = body;
       const { accessToken, refreshToken } = await this.authService.signup(
@@ -49,9 +52,31 @@ export class AuthController {
 
       this.setRefreshTokenCookie(res, refreshToken);
 
-      return { accessToken };
+      return {
+        accessToken,
+        message:
+          'Registration successful. Please verify your email. If you do not verify your email, your account will be deleted in a week',
+      };
     } catch {
-      throw new UnauthorizedException('Registration failed');
+      throw new UnauthorizedException('Registration failed.');
+    }
+  }
+
+  @Get('verification')
+  async verification(
+    @Query('token') token: string,
+  ): Promise<ResponseStatusDto> {
+    try {
+      const user = await this.authService.verifyEmail(token);
+
+      if (!user)
+        throw new UnauthorizedException(
+          'Invalid or expired verification token',
+        );
+
+      return { message: 'Email verified successfully' };
+    } catch {
+      throw new UnauthorizedException('Email verification failed.');
     }
   }
 
@@ -71,7 +96,7 @@ export class AuthController {
 
       return { accessToken };
     } catch {
-      throw new UnauthorizedException('Log in failed');
+      throw new UnauthorizedException('Log in failed.');
     }
   }
 
@@ -93,9 +118,9 @@ export class AuthController {
         path: '/',
       });
 
-      return { message: 'Successfully logout' };
+      return { message: 'Logout successful .' };
     } catch {
-      throw new UnauthorizedException('Log out failed');
+      throw new UnauthorizedException('Log out failed.');
     }
   }
 
@@ -107,9 +132,9 @@ export class AuthController {
     try {
       const { userId } = req.user;
       await this.authService.deleteUser(userId);
-      return { message: `User (${userId}) deleted successfully` };
+      return { message: `User (${userId}) deleted successfully.` };
     } catch {
-      throw new UnauthorizedException('User deletion failed');
+      throw new UnauthorizedException('User deletion failed.');
     }
   }
 

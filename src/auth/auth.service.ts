@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
+import * as nodemailer from 'nodemailer';
 import { RefreshTokenDto, TokenPairDto, UserDto } from './auth.dto';
 
 @Injectable()
@@ -15,17 +16,22 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  private async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 10);
+  private async hashData(data: string): Promise<string> {
+    return bcrypt.hash(data, 10);
   }
 
-  private async createUser(email: string, hashedPassword: string) {
+  private async createUser(
+    email: string,
+    hashedPassword: string,
+    hashedVerificationToken: string,
+  ) {
     return this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         username: email.split('@')[0],
         tokenVersion: 1,
+        verificationToken: hashedVerificationToken,
       },
     });
   }
@@ -82,17 +88,74 @@ export class AuthService {
     });
   }
 
+  private async sendVerificationEmail(
+    email: string,
+    verificationToken: string,
+  ) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const verificationUrl = `${process.env.FRONTEND_URL}/auth/verification?token=${verificationToken}`;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: `Verify your email on ${process.env.FRONTEND_URL}`,
+        html: `<p>Please click <a href="${verificationUrl}">this link</a> to verify your email.</p>`,
+      });
+    } catch (error) {
+      this.logger.error('Send verification email failed', error.stack);
+      throw new UnauthorizedException('Send verification email failed');
+    }
+  }
+
   async signup(email: string, password: string): Promise<TokenPairDto> {
     try {
-      const hashedPassword = await this.hashPassword(password);
-      const user = await this.createUser(email, hashedPassword);
+      const verificationToken = uuidv4();
+      const hashedPassword = await this.hashData(password);
+      const user = await this.createUser(
+        email,
+        hashedPassword,
+        verificationToken,
+      );
       const refreshToken = await this.createRefreshToken(user.id);
       const accessToken = this.createToken(user);
+
+      await this.sendVerificationEmail(email, verificationToken);
 
       return { accessToken, refreshToken };
     } catch (error) {
       this.logger.error('Signup failed', error.stack);
       throw new UnauthorizedException('Registration failed');
+    }
+  }
+
+  async verifyEmail(token: string): Promise<UserDto> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { verificationToken: token },
+      });
+
+      if (!user) throw new UnauthorizedException('User not found');
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true, verificationToken: null },
+      });
+
+      return user;
+    } catch (error) {
+      this.logger.error('Email verification failed', error.stack);
+      throw new UnauthorizedException('Email verification failed');
     }
   }
 

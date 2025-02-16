@@ -8,11 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String @id @default(uuid())
-  username     String @unique
-  email        String @unique
-  password     String
-  tokenVersion Int    @default(1)
+  id                String   @id @default(uuid())
+  username          String   @unique
+  email             String   @unique
+  password          String
+  tokenVersion      Int      @default(1)
+  isVerified        Boolean  @default(false)
+  verificationToken String?  @unique
+  createdAt         DateTime @default(now())
 
   tasks         Task[]         @relation("UserTasks")
   refreshTokens RefreshToken[] @relation("UserRefreshTokens")

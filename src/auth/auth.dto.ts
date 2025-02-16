@@ -67,6 +67,11 @@ export class AccessTokenDto {
   accessToken: string;
 }
 
+export class SignUpDto extends AccessTokenDto {
+  @IsString()
+  message: string;
+}
+
 export class TokenPairDto extends AccessTokenDto {
   @IsString()
   @IsNotEmpty()
