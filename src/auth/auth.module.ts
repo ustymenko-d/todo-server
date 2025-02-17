@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy } from '../common/jwt.strategy';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CommonModule } from 'src/common/common.module';
 
 @Module({
   imports: [
-    PassportModule,
+    CommonModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default_secret',
       signOptions: { expiresIn: '3h' },

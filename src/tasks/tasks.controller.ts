@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
@@ -18,12 +19,18 @@ import {
 } from './tasks.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { TaskOwnerGuard } from './task-owner.guard';
+import { JwtUserDto } from 'src/auth/auth.dto';
 
 @Controller('tasks')
 export class TasksController {
-  private readonly logger = new Logger(TasksService.name);
-
   constructor(private readonly tasksService: TasksService) {}
+
+  private readonly logger = new Logger(TasksController.name);
+
+  private handleError(message: string, error: Error): never {
+    this.logger.error(message, error.stack);
+    throw error;
+  }
 
   @UseGuards(AuthGuard('jwt'))
   @Post('get')
@@ -32,20 +39,24 @@ export class TasksController {
       const tasksData = await this.tasksService.getTasks(body);
       return { success: true, tasksData };
     } catch (error) {
-      this.logger.error('Error when fetching tasks: ', error);
-      throw error;
+      this.handleError('Error while fetching tasks: ', error);
     }
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Post()
-  async create(@Body() body: TaskBaseDto): Promise<TaskResponseDto> {
+  @Post('create')
+  async create(
+    @Req() req: { user: JwtUserDto },
+    @Body() body: TaskBaseDto,
+  ): Promise<TaskResponseDto> {
     try {
-      const createdTask = await this.tasksService.createTask(body);
+      const createdTask = await this.tasksService.createTask({
+        ...body,
+        userId: req.user.userId,
+      });
       return { success: true, task: createdTask };
     } catch (error) {
-      this.logger.error('Error when creating a task: ', error);
-      throw error;
+      this.handleError('Error while creating a task: ', error);
     }
   }
 
@@ -53,11 +64,10 @@ export class TasksController {
   @Put()
   async edit(@Body() body: TaskDto): Promise<TaskResponseDto> {
     try {
-      const updatedTask = await this.tasksService.editeTask(body);
+      const updatedTask = await this.tasksService.editTask(body);
       return { success: true, task: updatedTask };
     } catch (error) {
-      this.logger.error('Error when editing a task: ', error);
-      throw error;
+      this.handleError('Error while editing a task: ', error);
     }
   }
 
@@ -70,11 +80,10 @@ export class TasksController {
       const updatedTask = await this.tasksService.toggleStatus(taskId);
       return { success: true, task: updatedTask };
     } catch (error) {
-      this.logger.error(
+      this.handleError(
         `Error when change status of the task (${taskId}): `,
         error,
       );
-      throw error;
     }
   }
 
@@ -85,8 +94,7 @@ export class TasksController {
       const deletedTask = await this.tasksService.deleteTask(taskId);
       return { success: true, task: deletedTask };
     } catch (error) {
-      this.logger.error('Error when deleting a task: ', error);
-      throw error;
+      this.handleError('Error when deleting a task: ', error);
     }
   }
 }

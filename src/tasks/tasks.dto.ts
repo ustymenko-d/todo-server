@@ -4,19 +4,20 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   MinLength,
 } from 'class-validator';
 
-interface ITaskBase {
-  title: string;
-  description?: string | null;
-  completed: boolean;
-  userId: string;
-  parentTaskId?: string | null;
-  expiresAt?: Date | null;
-}
+// interface ITaskBase {
+//   title: string;
+//   description?: string | null;
+//   completed: boolean;
+//   userId: string;
+//   parentTaskId?: string | null;
+//   expiresAt?: Date | null;
+// }
 
-export class TaskBaseDto implements ITaskBase {
+export class TaskBaseDto {
   @IsString()
   @IsNotEmpty({ message: 'The title is required.' })
   @MinLength(2, { message: 'The title must be at least 2 characters long.' })
@@ -30,10 +31,6 @@ export class TaskBaseDto implements ITaskBase {
   completed: boolean;
 
   @IsString()
-  @IsNotEmpty({ message: 'The user ID is required.' })
-  userId: string;
-
-  @IsString()
   @IsOptional()
   parentTaskId?: string | null;
 
@@ -41,7 +38,12 @@ export class TaskBaseDto implements ITaskBase {
   expiresAt?: Date | null;
 }
 
-export class TaskDto extends TaskBaseDto {
+export class TaskBaseAndOwnerDto extends TaskBaseDto {
+  @IsString()
+  userId: string;
+}
+
+export class TaskDto extends TaskBaseAndOwnerDto {
   @IsString()
   @IsNotEmpty({ message: 'The task ID is required.' })
   id: string;
@@ -57,9 +59,11 @@ export class TaskResponseDto {
 
 export class GetTasksRequestDto {
   @IsNumber()
+  @Min(1, { message: 'Page must be at least 1.' })
   page: number;
 
   @IsNumber()
+  @Min(1, { message: 'Limit must be at least 1.' })
   limit: number;
 
   @IsBoolean({ message: 'Invalid value.' })

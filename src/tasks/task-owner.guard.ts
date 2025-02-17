@@ -1,15 +1,15 @@
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
-  Logger,
-  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class TaskOwnerGuard implements CanActivate {
-  private readonly logger = new Logger(TaskOwnerGuard.name);
   constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -17,27 +17,20 @@ export class TaskOwnerGuard implements CanActivate {
     const userId = request.user?.userId;
     const taskId = request.params.taskId || request.body.id;
 
-    if (!userId || !taskId) {
-      this.logger.warn('Invalid request parameters');
-      throw new UnauthorizedException('Invalid request parameters');
-    }
+    if (!userId || !taskId)
+      throw new BadRequestException('Invalid request parameters');
 
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
       select: { userId: true },
     });
 
-    if (!task) {
-      this.logger.warn('Task not found');
-      throw new UnauthorizedException('Task not found');
-    }
+    if (!task) throw new NotFoundException('Task not found');
 
-    if (task.userId !== userId) {
-      this.logger.warn(`Current user (${userId}) do not own this task`);
-      throw new UnauthorizedException(
+    if (task.userId !== userId)
+      throw new ForbiddenException(
         `Current user (${userId}) do not own this task`,
       );
-    }
 
     return true;
   }

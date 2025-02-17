@@ -23,21 +23,20 @@ import {
   SignUpDto,
 } from './auth.dto';
 import { Request, Response } from 'express';
+import { CookieService } from '../common/cookie.service';
 
 @Controller('auth')
 export class AuthController {
-  private readonly logger = new Logger(AuthService.name);
+  constructor(
+    private readonly authService: AuthService,
+    private cookieService: CookieService,
+  ) {}
 
-  constructor(private readonly authService: AuthService) {}
+  private readonly logger = new Logger(AuthController.name);
 
-  private setRefreshTokenCookie(res: Response, refreshToken: string) {
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+  private handleError(message: string, error: Error): never {
+    this.logger.error(message, error.stack);
+    throw error;
   }
 
   @Post('signup')
@@ -52,15 +51,15 @@ export class AuthController {
         password,
       );
 
-      this.setRefreshTokenCookie(res, refreshToken);
+      this.cookieService.setRefreshTokenCookie(res, refreshToken);
 
       return {
         accessToken,
         message:
-          'Registration successful. Please verify your email. If you do not verify your email, your account will be deleted in a week',
+          'Registration successful. Please verify your email. If you do not verify your email, your account will be deleted in a week.',
       };
-    } catch {
-      throw new UnauthorizedException('Registration failed.');
+    } catch (error) {
+      this.handleError('Eror while signing up:', error);
     }
   }
 
@@ -76,9 +75,9 @@ export class AuthController {
           'Invalid or expired verification token',
         );
 
-      return { message: 'Email verified successfully' };
-    } catch {
-      throw new UnauthorizedException('Email verification failed.');
+      return { message: 'Email verified successfully.' };
+    } catch (error) {
+      this.handleError('Eror during email verification:', error);
     }
   }
 
@@ -94,11 +93,11 @@ export class AuthController {
         password,
       );
 
-      this.setRefreshTokenCookie(res, refreshToken);
+      this.cookieService.setRefreshTokenCookie(res, refreshToken);
 
       return { accessToken };
-    } catch {
-      throw new UnauthorizedException('Log in failed.');
+    } catch (error) {
+      this.handleError('Error while logging in:', error);
     }
   }
 
@@ -110,19 +109,11 @@ export class AuthController {
   ): Promise<ResponseStatusDto> {
     try {
       const { userId } = req.user;
-
       await this.authService.logout(userId);
-
-      res.clearCookie('refresh_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/',
-      });
-
-      return { message: 'Logout successful .' };
-    } catch {
-      throw new UnauthorizedException('Log out failed.');
+      this.cookieService.clearRefreshTokenCookie(res);
+      return { message: 'Logout successful.' };
+    } catch (error) {
+      this.handleError('Error while logging out:', error);
     }
   }
 
@@ -135,8 +126,8 @@ export class AuthController {
       const { userId } = req.user;
       await this.authService.deleteUser(userId);
       return { message: `User (${userId}) deleted successfully.` };
-    } catch {
-      throw new UnauthorizedException('User deletion failed.');
+    } catch (error) {
+      this.handleError('Eror while deleteing:', error);
     }
   }
 
@@ -147,8 +138,8 @@ export class AuthController {
     try {
       await this.authService.sendResetPasswordEmail(email);
       return { message: 'Reset password email sent' };
-    } catch {
-      throw new UnauthorizedException('Reset password email sent failed.');
+    } catch (error) {
+      this.handleError('Error while sending reset password email:', error);
     }
   }
 
@@ -160,8 +151,8 @@ export class AuthController {
     try {
       await this.authService.resetPassword(token, passwordDto);
       return { message: 'Password updated successfully' };
-    } catch {
-      throw new UnauthorizedException('Password update failed.');
+    } catch (error) {
+      this.handleError('Error while resetting password:', error);
     }
   }
 
@@ -181,11 +172,11 @@ export class AuthController {
       const { accessToken, refreshToken: newRefreshToken } =
         await this.authService.refreshToken(userId, refreshToken);
 
-      this.setRefreshTokenCookie(res, newRefreshToken);
+      this.cookieService.setRefreshTokenCookie(res, newRefreshToken);
 
       return { accessToken };
-    } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+    } catch (error) {
+      this.handleError('Error while resetting password:', error);
     }
   }
 }
