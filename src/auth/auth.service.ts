@@ -13,6 +13,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
 import { TokenService } from 'src/common/token.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class AuthService {
@@ -224,5 +225,20 @@ export class AuthService {
       this.logger.error(error.stack);
       throw error;
     }
+  }
+
+  @Cron(CronExpression.EVERY_10_SECONDS)
+  async deleteUnverifiedUsers() {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const deletedUsers = await this.prisma.user.deleteMany({
+      where: {
+        isVerified: false,
+        createdAt: { lt: oneWeekAgo },
+      },
+    });
+
+    this.logger.log(`Deleted ${deletedUsers.count} unverified users`);
   }
 }
