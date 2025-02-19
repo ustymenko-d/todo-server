@@ -57,6 +57,18 @@ export class TaskResponseDto {
   task: TaskDto;
 }
 
+export class ManyTasksDto {
+  tasks: TaskDto[] = [];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export class GetTasksResponseDto {
+  success: boolean;
+  tasksData: ManyTasksDto;
+}
+
 export class GetTasksRequestDto {
   @IsNumber()
   @Min(1, { message: 'Page must be at least 1.' })

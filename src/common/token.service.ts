@@ -9,8 +9,8 @@ import { RefreshTokenDto, UserDto } from 'src/auth/auth.dto';
 @Injectable()
 export class TokenService {
   constructor(
-    private jwtService: JwtService,
-    private prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private readonly logger = new Logger(TokenService.name);

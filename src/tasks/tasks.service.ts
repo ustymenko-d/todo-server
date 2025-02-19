@@ -2,7 +2,12 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
-import { GetTasksRequestDto, TaskBaseAndOwnerDto, TaskDto } from './tasks.dto';
+import {
+  GetTasksRequestDto,
+  ManyTasksDto,
+  TaskBaseAndOwnerDto,
+  TaskDto,
+} from './tasks.dto';
 
 @Injectable()
 export class TasksService {
@@ -10,7 +15,7 @@ export class TasksService {
 
   private readonly logger = new Logger(TasksService.name);
 
-  async getTasks(payload: GetTasksRequestDto) {
+  async getTasks(payload: GetTasksRequestDto): Promise<ManyTasksDto> {
     try {
       const { page, limit, completed, userId, topLayerTasks, taskId } = payload;
       const skip = (page - 1) * limit;
@@ -104,7 +109,7 @@ export class TasksService {
     }
   }
 
-  async toggleStatus(taskId: string) {
+  async toggleStatus(taskId: string): Promise<TaskDto> {
     try {
       const task = await this.prisma.task.findUnique({
         where: { id: taskId },
@@ -124,7 +129,7 @@ export class TasksService {
     }
   }
 
-  async deleteTask(taskId: string) {
+  async deleteTask(taskId: string): Promise<TaskDto> {
     try {
       return await this.prisma.task.delete({
         where: { id: taskId },

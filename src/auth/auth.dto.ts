@@ -4,7 +4,9 @@ import {
   IsEmail,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -79,8 +81,7 @@ export class TokenPairDto extends AccessTokenDto {
 }
 
 export class UserDto extends PasswordBaseDto {
-  @IsString()
-  @IsNotEmpty({ message: 'User ID is required.' })
+  @IsUUID()
   id: string;
 
   @IsString()
@@ -91,6 +92,16 @@ export class UserDto extends PasswordBaseDto {
 
   @IsNumber()
   tokenVersion: number;
+
+  @IsBoolean()
+  isVerified: boolean;
+
+  @IsString()
+  @IsOptional()
+  verificationToken: string | null;
+
+  @IsDate()
+  createdAt: Date;
 }
 
 export class ResponseStatusDto {

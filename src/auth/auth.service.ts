@@ -18,11 +18,11 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private tokenService: TokenService,
-    private mailService: MailService,
-    private passwordService: PasswordService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly tokenService: TokenService,
+    private readonly mailService: MailService,
+    private readonly passwordService: PasswordService,
   ) {}
 
   private readonly logger = new Logger(AuthService.name);
@@ -31,7 +31,7 @@ export class AuthService {
     email: string,
     hashedPassword: string,
     hashedVerificationToken: string,
-  ) {
+  ): Promise<UserDto> {
     try {
       return await this.prisma.user.create({
         data: {
@@ -116,7 +116,6 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
 
       const updatedUser = await this.incrementTokenVersion(user);
-
       await this.tokenService.revokePreviousTokens(user.id);
 
       const refreshToken = await this.tokenService.createRefreshToken(user.id);
@@ -129,14 +128,11 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string) {
+  async logout(userId: string): Promise<void> {
     try {
       await this.tokenService.revokePreviousTokens(userId);
-
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
-
       if (!user) throw new UnauthorizedException('User not found');
-
       await this.incrementTokenVersion(user);
     } catch (error) {
       this.logger.error(error);
@@ -144,7 +140,7 @@ export class AuthService {
     }
   }
 
-  async deleteUser(userId: string) {
+  async deleteUser(userId: string): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
@@ -157,7 +153,7 @@ export class AuthService {
     }
   }
 
-  async sendResetPasswordEmail(email: string) {
+  async sendResetPasswordEmail(email: string): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({ where: { email } });
 
@@ -177,7 +173,10 @@ export class AuthService {
     }
   }
 
-  async resetPassword(token: string, newPasswordDto: PasswordBaseDto) {
+  async resetPassword(
+    token: string,
+    newPasswordDto: PasswordBaseDto,
+  ): Promise<void> {
     try {
       const { userId, tokenVersion } = this.jwtService.verify(token, {
         secret: process.env.JWT_RESET_SECRET,
@@ -227,18 +226,18 @@ export class AuthService {
     }
   }
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  async deleteUnverifiedUsers() {
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async deleteUnverifiedUsers(): Promise<void> {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const deletedUsers = await this.prisma.user.deleteMany({
+    const { count } = await this.prisma.user.deleteMany({
       where: {
         isVerified: false,
         createdAt: { lt: oneWeekAgo },
       },
     });
 
-    this.logger.log(`Deleted ${deletedUsers.count} unverified users`);
+    this.logger.log(`Deleted ${count} unverified users`);
   }
 }

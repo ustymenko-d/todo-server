@@ -13,6 +13,7 @@ import {
 import { TasksService } from './tasks.service';
 import {
   GetTasksRequestDto,
+  GetTasksResponseDto,
   TaskBaseDto,
   TaskDto,
   TaskResponseDto,
@@ -34,7 +35,7 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('get')
-  async get(@Body() body: GetTasksRequestDto) {
+  async get(@Body() body: GetTasksRequestDto): Promise<GetTasksResponseDto> {
     try {
       const tasksData = await this.tasksService.getTasks(body);
       return { success: true, tasksData };
@@ -89,7 +90,7 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
-  async delete(@Param('taskId') taskId: string) {
+  async delete(@Param('taskId') taskId: string): Promise<TaskResponseDto> {
     try {
       const deletedTask = await this.tasksService.deleteTask(taskId);
       return { success: true, task: deletedTask };

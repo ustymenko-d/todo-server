@@ -29,7 +29,7 @@ import { CookieService } from '../common/cookie.service';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private cookieService: CookieService,
+    private readonly cookieService: CookieService,
   ) {}
 
   private readonly logger = new Logger(AuthController.name);
