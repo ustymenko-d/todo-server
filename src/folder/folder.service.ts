@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   FolderDto,
@@ -16,6 +21,22 @@ export class FolderService {
 
   async createFolder(payload: FolderPayloadDto): Promise<FolderDto> {
     try {
+      const { userId } = payload;
+
+      const { isVerified } = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isVerified: true },
+      });
+
+      const userFoldersCount = await this.prisma.folder.count({
+        where: { userId },
+      });
+
+      if (!isVerified && userFoldersCount >= 3)
+        throw new ForbiddenException(
+          'Unverified users cannot create more than three folders',
+        );
+
       return await this.prisma.folder.create({
         data: payload,
       });

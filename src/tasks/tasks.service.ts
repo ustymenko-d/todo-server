@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
@@ -62,6 +67,22 @@ export class TasksService {
 
   async createTask(payload: TaskBaseAndOwnerDto): Promise<TaskDto> {
     try {
+      const { userId } = payload;
+
+      const { isVerified } = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isVerified: true },
+      });
+
+      const userTasksCount = await this.prisma.task.count({
+        where: { userId },
+      });
+
+      if (!isVerified && userTasksCount >= 10)
+        throw new ForbiddenException(
+          'Unverified users cannot create more than ten tasks',
+        );
+
       const { parentTaskId } = payload;
 
       if (parentTaskId) {
