@@ -8,15 +8,6 @@ import {
   MinLength,
 } from 'class-validator';
 
-// interface ITaskBase {
-//   title: string;
-//   description?: string | null;
-//   completed: boolean;
-//   userId: string;
-//   parentTaskId?: string | null;
-//   expiresAt?: Date | null;
-// }
-
 export class TaskBaseDto {
   @IsString()
   @IsNotEmpty({ message: 'The title is required.' })
@@ -69,7 +60,7 @@ export class GetTasksResponseDto {
   tasksData: ManyTasksDto;
 }
 
-export class GetTasksRequestDto {
+export class GetTasksPayloadDto {
   @IsNumber()
   @Min(1, { message: 'Page must be at least 1.' })
   page: number;
@@ -80,16 +71,18 @@ export class GetTasksRequestDto {
 
   @IsBoolean({ message: 'Invalid value.' })
   @IsOptional()
-  completed: boolean;
+  completed?: boolean;
 
-  @IsString()
-  @IsOptional()
-  userId?: string;
-
+  @IsBoolean()
   @IsOptional()
   topLayerTasks?: boolean;
 
   @IsString()
   @IsOptional()
   taskId?: string;
+}
+
+export class GetTasksRequestDto extends GetTasksPayloadDto {
+  @IsString()
+  userId: string;
 }

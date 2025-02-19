@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import {
-  GetTasksRequestDto,
+  GetTasksPayloadDto,
   GetTasksResponseDto,
   TaskBaseDto,
   TaskDto,
@@ -35,9 +35,15 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('get')
-  async get(@Body() body: GetTasksRequestDto): Promise<GetTasksResponseDto> {
+  async get(
+    @Req() req: { user: JwtUserDto },
+    @Body() body: GetTasksPayloadDto,
+  ): Promise<GetTasksResponseDto> {
     try {
-      const tasksData = await this.tasksService.getTasks(body);
+      const tasksData = await this.tasksService.getTasks({
+        ...body,
+        userId: req.user.userId,
+      });
       return { success: true, tasksData };
     } catch (error) {
       this.handleError('Error while fetching tasks: ', error);
