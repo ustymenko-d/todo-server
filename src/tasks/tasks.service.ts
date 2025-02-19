@@ -52,12 +52,9 @@ export class TasksService {
     }
   }
 
-  async createTask(taskBody: TaskBaseAndOwnerDto): Promise<TaskDto> {
+  async createTask(payload: TaskBaseAndOwnerDto): Promise<TaskDto> {
     try {
-      const { userId, parentTaskId } = taskBody;
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-
-      if (!user) throw new NotFoundException(`User (${userId}) not found`);
+      const { parentTaskId } = payload;
 
       if (parentTaskId) {
         const parentTask = await this.prisma.task.findUnique({
@@ -72,7 +69,7 @@ export class TasksService {
       }
 
       const newTaskPayload: TaskDto = {
-        ...taskBody,
+        ...payload,
         id: uuidv4(),
         createdAt: new Date(),
       };

@@ -103,9 +103,3 @@ export class UserDto extends PasswordBaseDto {
   @IsDate()
   createdAt: Date;
 }
-
-export class ResponseStatusDto {
-  @IsString()
-  @IsNotEmpty()
-  message: string;
-}

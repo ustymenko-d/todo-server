@@ -1,12 +1,11 @@
 import {
   IsBoolean,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
-  Min,
   MinLength,
 } from 'class-validator';
+import { GetRequestDto } from 'src/common/common.dto';
 
 export class TaskBaseDto {
   @IsString()
@@ -60,15 +59,7 @@ export class GetTasksResponseDto {
   tasksData: ManyTasksDto;
 }
 
-export class GetTasksPayloadDto {
-  @IsNumber()
-  @Min(1, { message: 'Page must be at least 1.' })
-  page: number;
-
-  @IsNumber()
-  @Min(1, { message: 'Limit must be at least 1.' })
-  limit: number;
-
+export class GetTasksPayloadDto extends GetRequestDto {
   @IsBoolean({ message: 'Invalid value.' })
   @IsOptional()
   completed?: boolean;

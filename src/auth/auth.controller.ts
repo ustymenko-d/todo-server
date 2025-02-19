@@ -19,11 +19,11 @@ import {
   AuthBaseDto,
   JwtUserDto,
   PasswordBaseDto,
-  ResponseStatusDto,
   SignUpDto,
 } from './auth.dto';
 import { Request, Response } from 'express';
 import { CookieService } from '../common/cookie.service';
+import { ResponseStatusDto } from 'src/common/common.dto';
 
 @Controller('auth')
 export class AuthController {
