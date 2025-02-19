@@ -5,7 +5,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { GetRequestDto } from 'src/common/common.dto';
+import { GetRequestDto, GetResponseDto } from 'src/common/common.dto';
 
 export class TaskBaseDto {
   @IsString()
@@ -47,11 +47,8 @@ export class TaskResponseDto {
   task: TaskDto;
 }
 
-export class ManyTasksDto {
+export class ManyTasksDto extends GetResponseDto {
   tasks: TaskDto[] = [];
-  total: number;
-  page: number;
-  pages: number;
 }
 
 export class GetTasksResponseDto {
@@ -60,6 +57,10 @@ export class GetTasksResponseDto {
 }
 
 export class GetTasksPayloadDto extends GetRequestDto {
+  @IsString({ message: 'Invalid value.' })
+  @IsOptional()
+  title?: string;
+
   @IsBoolean({ message: 'Invalid value.' })
   @IsOptional()
   completed?: boolean;

@@ -17,7 +17,8 @@ export class TasksService {
 
   async getTasks(payload: GetTasksRequestDto): Promise<ManyTasksDto> {
     try {
-      const { page, limit, completed, userId, topLayerTasks, taskId } = payload;
+      const { page, limit, completed, userId, topLayerTasks, taskId, title } =
+        payload;
       const skip = (page - 1) * limit;
       const where: Prisma.TaskWhereInput = Object.assign(
         {},
@@ -25,6 +26,12 @@ export class TasksService {
         completed !== undefined && completed !== null && { completed },
         userId && { userId },
         topLayerTasks && { parentTaskId: null },
+        title && {
+          title: {
+            contains: title,
+            mode: Prisma.QueryMode.insensitive,
+          },
+        },
       );
 
       const [tasks, total] = await this.prisma.$transaction([
@@ -42,8 +49,9 @@ export class TasksService {
 
       return {
         tasks,
-        total,
         page,
+        limit,
+        total,
         pages: Math.ceil(total / limit),
       };
     } catch (error) {
