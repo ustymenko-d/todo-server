@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import {
-  ResetPasswordMailDto,
+  PasswordResetMailDto,
   VerificationPayloadDto,
 } from 'src/auth/auth.dto';
 
@@ -36,10 +36,10 @@ export class MailService {
     }
   }
 
-  async sendResetPasswordEmail({
+  async sendPasswordResetEmail({
     email,
     resetToken,
-  }: ResetPasswordMailDto): Promise<void> {
+  }: PasswordResetMailDto): Promise<void> {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',

@@ -126,12 +126,12 @@ export class VerificationPayloadDto extends EmailBaseDto {
   verificationToken: string;
 }
 
-export class ResetPasswordMailDto extends EmailBaseDto {
+export class PasswordResetMailDto extends EmailBaseDto {
   @IsJWT({ message: 'Invalid token.' })
   resetToken: string;
 }
 
-export class ResetPasswordPayloadDto extends PasswordBaseDto {
+export class PasswordResetPayloadDto extends PasswordBaseDto {
   @IsJWT({ message: 'Invalid token.' })
   resetToken: string;
 }

@@ -140,7 +140,7 @@ export class AuthController {
     @Body() { email }: EmailBaseDto,
   ): Promise<ResponseStatusDto> {
     try {
-      await this.authService.sendResetPasswordEmail({ email });
+      await this.authService.sendPasswordResetEmail({ email });
       return { success: true, message: 'Reset password email sent' };
     } catch (error) {
       this.handleError('Error while sending reset password email:', error);

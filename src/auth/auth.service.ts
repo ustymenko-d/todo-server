@@ -5,14 +5,13 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AuthBaseDto,
   EmailBaseDto,
+  PasswordResetPayloadDto,
   RefreshTokenPayloadDto,
-  ResetPasswordPayloadDto,
   TokenPairDto,
   UserDto,
   UserIdDto,
@@ -27,7 +26,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
     private readonly tokenService: TokenService,
     private readonly mailService: MailService,
     private readonly passwordService: PasswordService,
@@ -173,18 +171,15 @@ export class AuthService {
     }
   }
 
-  async sendResetPasswordEmail({ email }: EmailBaseDto): Promise<void> {
+  async sendPasswordResetEmail({ email }: EmailBaseDto): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({ where: { email } });
 
       if (!user) throw new UnauthorizedException('User not found');
 
-      const resetToken = this.jwtService.sign(
-        { userId: user.id, tokenVersion: user.tokenVersion },
-        { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
-      );
+      const resetToken = await this.tokenService.createPasswordResetToken(user);
 
-      this.mailService.sendResetPasswordEmail({ email, resetToken });
+      this.mailService.sendPasswordResetEmail({ email, resetToken });
 
       this.logger.log(`Reset password email sent to ${email}`);
     } catch (error) {
@@ -196,11 +191,10 @@ export class AuthService {
   async resetPassword({
     resetToken,
     password,
-  }: ResetPasswordPayloadDto): Promise<void> {
+  }: PasswordResetPayloadDto): Promise<void> {
     try {
-      const { userId, tokenVersion } = this.jwtService.verify(resetToken, {
-        secret: process.env.JWT_RESET_SECRET,
-      });
+      const { userId, tokenVersion } =
+        this.tokenService.verifyPasswordResetToken(resetToken);
 
       const user = await this.prisma.user.findUnique({
         where: { id: userId, tokenVersion },

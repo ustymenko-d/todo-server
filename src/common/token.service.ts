@@ -4,7 +4,12 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RefreshTokenPayloadDto, UserDto, UserIdDto } from 'src/auth/auth.dto';
+import {
+  JwtUserDto,
+  RefreshTokenPayloadDto,
+  UserDto,
+  UserIdDto,
+} from 'src/auth/auth.dto';
 
 @Injectable()
 export class TokenService {
@@ -16,30 +21,40 @@ export class TokenService {
   private readonly logger = new Logger(TokenService.name);
 
   createToken(user: UserDto): string {
-    const payload = {
-      email: user.email,
-      sub: user.id,
-      tokenVersion: user.tokenVersion,
-    };
+    try {
+      const payload = {
+        email: user.email,
+        sub: user.id,
+        tokenVersion: user.tokenVersion,
+      };
 
-    return this.jwtService.sign(payload);
+      return this.jwtService.sign(payload);
+    } catch (error) {
+      this.logger.error('Failed to create access token', error.stack);
+      throw error;
+    }
   }
 
   async createRefreshToken({ userId }: UserIdDto): Promise<string> {
-    const token = uuidv4();
-    const hashedToken = await bcrypt.hash(token, 10);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    try {
+      const token = uuidv4();
+      const hashedToken = await bcrypt.hash(token, 10);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
-    await this.prisma.refreshToken.create({
-      data: {
-        userId,
-        token: hashedToken,
-        expiresAt,
-      },
-    });
+      await this.prisma.refreshToken.create({
+        data: {
+          userId,
+          token: hashedToken,
+          expiresAt,
+        },
+      });
 
-    return token;
+      return token;
+    } catch (error) {
+      this.logger.error('Failed to create refresh token', error.stack);
+      throw error;
+    }
   }
 
   async validateRefreshToken({
@@ -63,10 +78,38 @@ export class TokenService {
   }
 
   async revokePreviousTokens({ userId }: UserIdDto): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revoked: false },
-      data: { revoked: true },
-    });
+    try {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId, revoked: false },
+        data: { revoked: true },
+      });
+    } catch (error) {
+      this.logger.error('Failed to revoke previous tokens', error.stack);
+      throw error;
+    }
+  }
+
+  createPasswordResetToken(user: UserDto): string {
+    try {
+      return this.jwtService.sign(
+        { userId: user.id, tokenVersion: user.tokenVersion },
+        { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
+      );
+    } catch (error) {
+      this.logger.error('Failed to create reset password token', error.stack);
+      throw error;
+    }
+  }
+
+  verifyPasswordResetToken(resetToken: string): JwtUserDto {
+    try {
+      return this.jwtService.verify(resetToken, {
+        secret: process.env.JWT_RESET_SECRET,
+      });
+    } catch (error) {
+      this.logger.error('Failed to verify reset password token', error.stack);
+      throw error;
+    }
   }
 
   async cleanUpExpiredTokens(): Promise<void> {
