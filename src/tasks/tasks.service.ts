@@ -8,10 +8,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 import {
-  GetTasksRequestDto,
+  GetTasksPayloadDto,
   ManyTasksDto,
   TaskBaseAndOwnerDto,
   TaskDto,
+  TaskIdDto,
 } from './tasks.dto';
 
 @Injectable()
@@ -20,10 +21,18 @@ export class TasksService {
 
   private readonly logger = new Logger(TasksService.name);
 
-  async getTasks(payload: GetTasksRequestDto): Promise<ManyTasksDto> {
+  async getTasks(payload: GetTasksPayloadDto): Promise<ManyTasksDto> {
     try {
-      const { page, limit, completed, userId, topLayerTasks, taskId, title } =
-        payload;
+      const {
+        page,
+        limit,
+        completed,
+        userId,
+        topLayerTasks,
+        taskId,
+        title,
+        folderId,
+      } = payload;
       const skip = (page - 1) * limit;
       const where: Prisma.TaskWhereInput = Object.assign(
         {},
@@ -31,6 +40,7 @@ export class TasksService {
         completed !== undefined && completed !== null && { completed },
         userId && { userId },
         topLayerTasks && { parentTaskId: null },
+        folderId && { folderId },
         title && {
           title: {
             contains: title,
@@ -135,7 +145,7 @@ export class TasksService {
     }
   }
 
-  async toggleStatus(taskId: string): Promise<TaskDto> {
+  async toggleStatus({ taskId }: TaskIdDto): Promise<TaskDto> {
     try {
       const task = await this.prisma.task.findUnique({
         where: { id: taskId },
@@ -155,7 +165,7 @@ export class TasksService {
     }
   }
 
-  async deleteTask(taskId: string): Promise<TaskDto> {
+  async deleteTask({ taskId }: TaskIdDto): Promise<TaskDto> {
     try {
       return await this.prisma.task.delete({
         where: { id: taskId },

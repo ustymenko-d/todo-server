@@ -1,25 +1,24 @@
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsInt, IsPositive, Min } from 'class-validator';
 
 export class ResponseStatusDto {
-  @IsString()
-  @IsNotEmpty()
+  success: boolean;
   message: string;
 }
 
 export class GetRequestDto {
-  @IsNumber()
+  @IsInt()
+  @IsPositive({ message: 'Page must be a positive number greater than zero.' })
   @Min(1, { message: 'Page must be at least 1.' })
   page: number;
 
-  @IsNumber()
+  @IsInt()
+  @IsPositive()
+  @IsPositive({ message: 'Limit must be a positive number greater than zero.' })
   @Min(1, { message: 'Limit must be at least 1.' })
   limit: number;
 }
 
 export class GetResponseDto extends GetRequestDto {
-  @IsNumber()
   pages: number;
-
-  @IsNumber()
   total: number;
 }

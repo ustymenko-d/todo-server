@@ -7,9 +7,11 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   FolderDto,
+  FolderIdDto,
   FolderPayloadDto,
   GetFolderPayloadDto,
   GetFolderResponseDto,
+  RenameFolderDto,
 } from './folder.dto';
 import { Prisma } from '@prisma/client';
 
@@ -86,7 +88,7 @@ export class FolderService {
     }
   }
 
-  async renameFolder(folderId: string, newName: string): Promise<FolderDto> {
+  async renameFolder({ folderId, name }: RenameFolderDto): Promise<FolderDto> {
     try {
       const folder = await this.prisma.folder.findUnique({
         where: { id: folderId },
@@ -98,7 +100,7 @@ export class FolderService {
 
       return await this.prisma.folder.update({
         where: { id: folderId },
-        data: { name: newName },
+        data: { name },
       });
     } catch (error) {
       this.logger.error(error);
@@ -106,7 +108,7 @@ export class FolderService {
     }
   }
 
-  async deleteFolder(folderId: string): Promise<FolderDto> {
+  async deleteFolder({ folderId }: FolderIdDto): Promise<FolderDto> {
     try {
       return await this.prisma.folder.delete({
         where: { id: folderId },

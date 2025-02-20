@@ -8,7 +8,15 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { PasswordBaseDto, TokenPairDto, UserDto } from './auth.dto';
+import {
+  AuthBaseDto,
+  EmailBaseDto,
+  RefreshTokenPayloadDto,
+  ResetPasswordPayloadDto,
+  TokenPairDto,
+  UserDto,
+  UserIdDto,
+} from './auth.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
@@ -64,19 +72,26 @@ export class AuthService {
     return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  async signup(email: string, password: string): Promise<TokenPairDto> {
+  async signup({ email, password }: AuthBaseDto): Promise<TokenPairDto> {
     try {
       const verificationToken = uuidv4();
-      const hashedPassword = await this.passwordService.hashPassword(password);
+      const hashedPassword = await this.passwordService.hashPassword({
+        password,
+      });
       const user = await this.createUser(
         email,
         hashedPassword,
         verificationToken,
       );
-      const refreshToken = await this.tokenService.createRefreshToken(user.id);
+      const refreshToken = await this.tokenService.createRefreshToken({
+        userId: user.id,
+      });
       const accessToken = this.tokenService.createToken(user);
 
-      await this.mailService.sendVerificationEmail(email, verificationToken);
+      await this.mailService.sendVerificationEmail({
+        email,
+        verificationToken,
+      });
 
       return { accessToken, refreshToken };
     } catch (error) {
@@ -111,14 +126,19 @@ export class AuthService {
 
       if (
         !user ||
-        !(await this.passwordService.comparePasswords(password, user.password))
+        !(await this.passwordService.comparePasswords({
+          password,
+          hashedPassword: user.password,
+        }))
       )
         throw new UnauthorizedException('Invalid credentials');
 
       const updatedUser = await this.incrementTokenVersion(user);
-      await this.tokenService.revokePreviousTokens(user.id);
+      await this.tokenService.revokePreviousTokens({ userId: user.id });
 
-      const refreshToken = await this.tokenService.createRefreshToken(user.id);
+      const refreshToken = await this.tokenService.createRefreshToken({
+        userId: user.id,
+      });
       const accessToken = this.tokenService.createToken(updatedUser);
 
       return { accessToken, refreshToken };
@@ -128,9 +148,9 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string): Promise<void> {
+  async logout({ userId }: UserIdDto): Promise<void> {
     try {
-      await this.tokenService.revokePreviousTokens(userId);
+      await this.tokenService.revokePreviousTokens({ userId });
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) throw new UnauthorizedException('User not found');
       await this.incrementTokenVersion(user);
@@ -153,7 +173,7 @@ export class AuthService {
     }
   }
 
-  async sendResetPasswordEmail(email: string): Promise<void> {
+  async sendResetPasswordEmail({ email }: EmailBaseDto): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({ where: { email } });
 
@@ -164,7 +184,7 @@ export class AuthService {
         { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
       );
 
-      this.mailService.sendResetPasswordEmail(email, resetToken);
+      this.mailService.sendResetPasswordEmail({ email, resetToken });
 
       this.logger.log(`Reset password email sent to ${email}`);
     } catch (error) {
@@ -173,12 +193,12 @@ export class AuthService {
     }
   }
 
-  async resetPassword(
-    token: string,
-    newPasswordDto: PasswordBaseDto,
-  ): Promise<void> {
+  async resetPassword({
+    resetToken,
+    password,
+  }: ResetPasswordPayloadDto): Promise<void> {
     try {
-      const { userId, tokenVersion } = this.jwtService.verify(token, {
+      const { userId, tokenVersion } = this.jwtService.verify(resetToken, {
         secret: process.env.JWT_RESET_SECRET,
       });
 
@@ -186,11 +206,11 @@ export class AuthService {
         where: { id: userId, tokenVersion },
       });
 
-      if (!user) throw new UnauthorizedException('User not found');
+      if (!user) throw new UnauthorizedException('Invalid token');
 
-      const hashedPassword = await this.passwordService.hashPassword(
-        newPasswordDto.password,
-      );
+      const hashedPassword = await this.passwordService.hashPassword({
+        password,
+      });
 
       await this.prisma.user.update({
         where: { id: user.id },
@@ -202,16 +222,17 @@ export class AuthService {
     }
   }
 
-  async refreshToken(
-    userId: string,
-    refreshToken: string,
-  ): Promise<TokenPairDto> {
+  async refreshToken({
+    userId,
+    refreshToken,
+  }: RefreshTokenPayloadDto): Promise<TokenPairDto> {
     try {
-      await this.tokenService.validateRefreshToken(userId, refreshToken);
-      await this.tokenService.revokePreviousTokens(userId);
+      await this.tokenService.validateRefreshToken({ userId, refreshToken });
+      await this.tokenService.revokePreviousTokens({ userId });
 
-      const newRefreshToken =
-        await this.tokenService.createRefreshToken(userId);
+      const newRefreshToken = await this.tokenService.createRefreshToken({
+        userId,
+      });
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
       if (!user) throw new UnauthorizedException('User not found');

@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RefreshTokenDto, UserDto } from 'src/auth/auth.dto';
+import { RefreshTokenPayloadDto, UserDto, UserIdDto } from 'src/auth/auth.dto';
 
 @Injectable()
 export class TokenService {
@@ -15,7 +15,7 @@ export class TokenService {
 
   private readonly logger = new Logger(TokenService.name);
 
-  createToken(user: UserDto) {
+  createToken(user: UserDto): string {
     const payload = {
       email: user.email,
       sub: user.id,
@@ -25,7 +25,7 @@ export class TokenService {
     return this.jwtService.sign(payload);
   }
 
-  async createRefreshToken(userId: string): Promise<string> {
+  async createRefreshToken({ userId }: UserIdDto): Promise<string> {
     const token = uuidv4();
     const hashedToken = await bcrypt.hash(token, 10);
     const expiresAt = new Date();
@@ -42,33 +42,34 @@ export class TokenService {
     return token;
   }
 
-  async validateRefreshToken(
-    userId: string,
-    token: string,
-  ): Promise<RefreshTokenDto> {
-    const refreshToken = await this.prisma.refreshToken.findFirst({
+  async validateRefreshToken({
+    userId,
+    refreshToken,
+  }: RefreshTokenPayloadDto): Promise<void> {
+    const storedRefreshToken = await this.prisma.refreshToken.findFirst({
       where: { userId, revoked: false, expiresAt: { gt: new Date() } },
     });
 
-    if (!refreshToken)
+    if (!storedRefreshToken)
       throw new UnauthorizedException('No refresh token found');
 
-    const isValid = await bcrypt.compare(token, refreshToken.token);
+    const isValid = await bcrypt.compare(
+      refreshToken,
+      storedRefreshToken.token,
+    );
 
     if (!isValid)
       throw new UnauthorizedException('Invalid or expired refresh token');
-
-    return refreshToken;
   }
 
-  async revokePreviousTokens(userId: string) {
+  async revokePreviousTokens({ userId }: UserIdDto): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { userId, revoked: false },
       data: { revoked: true },
     });
   }
 
-  async cleanUpExpiredTokens() {
+  async cleanUpExpiredTokens(): Promise<void> {
     try {
       this.logger.log('Starting token cleanup...');
 

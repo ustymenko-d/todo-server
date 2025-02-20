@@ -28,6 +28,16 @@ export class FolderNameDto {
   name: string;
 }
 
+export class FolderIdDto {
+  @IsUUID()
+  folderId: string;
+}
+
+export class RenameFolderDto extends FolderNameDto {
+  @IsUUID()
+  folderId: string;
+}
+
 export class FolderPayloadDto extends FolderNameDto {
   @IsUUID()
   @IsNotEmpty()

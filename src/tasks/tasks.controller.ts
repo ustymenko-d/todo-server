@@ -12,10 +12,11 @@ import {
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import {
-  GetTasksPayloadDto,
+  GetTasksRequestDto,
   GetTasksResponseDto,
   TaskBaseDto,
   TaskDto,
+  TaskIdDto,
   TaskResponseDto,
 } from './tasks.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -37,7 +38,7 @@ export class TasksController {
   @Post('get')
   async get(
     @Req() req: { user: JwtUserDto },
-    @Body() body: GetTasksPayloadDto,
+    @Body() body: GetTasksRequestDto,
   ): Promise<GetTasksResponseDto> {
     try {
       const tasksData = await this.tasksService.getTasks({
@@ -80,11 +81,9 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Patch(':taskId')
-  async toggleStatus(
-    @Param('taskId') taskId: string,
-  ): Promise<TaskResponseDto> {
+  async toggleStatus(@Param() { taskId }: TaskIdDto): Promise<TaskResponseDto> {
     try {
-      const updatedTask = await this.tasksService.toggleStatus(taskId);
+      const updatedTask = await this.tasksService.toggleStatus({ taskId });
       return { success: true, task: updatedTask };
     } catch (error) {
       this.handleError(
@@ -96,9 +95,9 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
-  async delete(@Param('taskId') taskId: string): Promise<TaskResponseDto> {
+  async delete(@Param() { taskId }: TaskIdDto): Promise<TaskResponseDto> {
     try {
-      const deletedTask = await this.tasksService.deleteTask(taskId);
+      const deletedTask = await this.tasksService.deleteTask({ taskId });
       return { success: true, task: deletedTask };
     } catch (error) {
       this.handleError('Error when deleting a task: ', error);

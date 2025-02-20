@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsDate,
   IsEmail,
+  IsJWT,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -26,6 +27,12 @@ export class PasswordBaseDto {
     message: 'The password must contain at least one digit.',
   })
   password: string;
+}
+
+export class EmailBaseDto {
+  @IsEmail({}, { message: 'Invalid email address.' })
+  @IsString()
+  email: string;
 }
 
 export class AuthBaseDto extends PasswordBaseDto {
@@ -80,6 +87,16 @@ export class TokenPairDto extends AccessTokenDto {
   refreshToken: string;
 }
 
+export class UserIdDto {
+  @IsUUID()
+  userId: string;
+}
+
+export class RefreshTokenPayloadDto extends UserIdDto {
+  @IsUUID()
+  refreshToken: string;
+}
+
 export class UserDto extends PasswordBaseDto {
   @IsUUID()
   id: string;
@@ -102,4 +119,24 @@ export class UserDto extends PasswordBaseDto {
 
   @IsDate()
   createdAt: Date;
+}
+
+export class VerificationPayloadDto extends EmailBaseDto {
+  @IsUUID()
+  verificationToken: string;
+}
+
+export class ResetPasswordMailDto extends EmailBaseDto {
+  @IsJWT({ message: 'Invalid token.' })
+  resetToken: string;
+}
+
+export class ResetPasswordPayloadDto extends PasswordBaseDto {
+  @IsJWT({ message: 'Invalid token.' })
+  resetToken: string;
+}
+
+export class PasswordPairDto extends PasswordBaseDto {
+  @IsString()
+  hashedPassword: string;
 }

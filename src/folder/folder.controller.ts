@@ -16,6 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { JwtUserDto } from 'src/auth/auth.dto';
 import { FolderOwnerGuard } from './folder-owner.guard';
 import {
+  FolderIdDto,
   FolderNameDto,
   FolderResponseDto,
   GetFolderRequestDto,
@@ -45,7 +46,11 @@ export class FolderController {
         userId: req.user.userId,
       };
       const createdFolder = await this.folderService.createFolder(payload);
-      return { message: 'Folder create successfully', folder: createdFolder };
+      return {
+        success: true,
+        message: 'Folder create successfully',
+        folder: createdFolder,
+      };
     } catch (error) {
       this.handleError('Eror while creating folder:', error);
     }
@@ -74,15 +79,19 @@ export class FolderController {
   @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
   @Patch(':folderId')
   async rename(
-    @Param('folderId') folderId: string,
-    @Body() body: FolderNameDto,
+    @Param() { folderId }: FolderIdDto,
+    @Body() { name }: FolderNameDto,
   ): Promise<FolderResponseDto> {
     try {
-      const renamedFolder = await this.folderService.renameFolder(
+      const renamedFolder = await this.folderService.renameFolder({
         folderId,
-        body.name,
-      );
-      return { message: 'Folder rename successfully', folder: renamedFolder };
+        name,
+      });
+      return {
+        success: true,
+        message: 'Folder rename successfully',
+        folder: renamedFolder,
+      };
     } catch (error) {
       this.handleError('Eror while renaminging folder:', error);
     }
@@ -90,12 +99,14 @@ export class FolderController {
 
   @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
   @Delete(':folderId')
-  async delete(
-    @Param('folderId') folderId: string,
-  ): Promise<FolderResponseDto> {
+  async delete(@Param() { folderId }: FolderIdDto): Promise<FolderResponseDto> {
     try {
-      const deletedFolder = await this.folderService.deleteFolder(folderId);
-      return { message: 'Folder deleted successfully', folder: deletedFolder };
+      const deletedFolder = await this.folderService.deleteFolder({ folderId });
+      return {
+        success: true,
+        message: 'Folder deleted successfully',
+        folder: deletedFolder,
+      };
     } catch (error) {
       this.handleError('Eror while deleting folder:', error);
     }

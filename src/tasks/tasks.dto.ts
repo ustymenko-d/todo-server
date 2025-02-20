@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
 } from 'class-validator';
 import { GetRequestDto, GetResponseDto } from 'src/common/common.dto';
@@ -26,6 +27,10 @@ export class TaskBaseDto {
 
   @IsOptional()
   expiresAt?: Date | null;
+
+  @IsOptional()
+  @IsUUID()
+  folderId?: string | null;
 }
 
 export class TaskBaseAndOwnerDto extends TaskBaseDto {
@@ -56,7 +61,7 @@ export class GetTasksResponseDto {
   tasksData: ManyTasksDto;
 }
 
-export class GetTasksPayloadDto extends GetRequestDto {
+export class GetTasksRequestDto extends GetRequestDto {
   @IsString({ message: 'Invalid value.' })
   @IsOptional()
   title?: string;
@@ -72,9 +77,18 @@ export class GetTasksPayloadDto extends GetRequestDto {
   @IsString()
   @IsOptional()
   taskId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  folderId?: string | null;
 }
 
-export class GetTasksRequestDto extends GetTasksPayloadDto {
+export class GetTasksPayloadDto extends GetTasksRequestDto {
   @IsString()
   userId: string;
+}
+
+export class TaskIdDto {
+  @IsUUID()
+  taskId: string;
 }

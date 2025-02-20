@@ -1,11 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import {
+  ResetPasswordMailDto,
+  VerificationPayloadDto,
+} from 'src/auth/auth.dto';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
 
-  async sendVerificationEmail(email: string, verificationToken: string) {
+  async sendVerificationEmail({
+    email,
+    verificationToken,
+  }: VerificationPayloadDto): Promise<void> {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -29,7 +36,10 @@ export class MailService {
     }
   }
 
-  async sendResetPasswordEmail(email: string, resetToken: string) {
+  async sendResetPasswordEmail({
+    email,
+    resetToken,
+  }: ResetPasswordMailDto): Promise<void> {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
