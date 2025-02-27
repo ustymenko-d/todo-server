@@ -7,7 +7,6 @@ import {
   Req,
   UnauthorizedException,
   Res,
-  Logger,
   Query,
   Get,
   Patch,
@@ -25,34 +24,24 @@ import {
 import { Request, Response } from 'express';
 import { CookieService } from '../common/cookie.service';
 import { ResponseStatusDto } from 'src/common/common.dto';
+import { RequestHandlerService } from 'src/common/request-handler.service';
+import { TokenService } from 'src/common/token.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
+    private readonly tokenService: TokenService,
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
+    private readonly requestHandlerService: RequestHandlerService,
   ) {}
-
-  private readonly logger = new Logger(AuthController.name);
-
-  private async handleRequest<T>(
-    handler: () => Promise<T>,
-    errorMessage: string,
-  ): Promise<T> {
-    try {
-      return await handler();
-    } catch (error) {
-      this.logger.error(errorMessage, error.stack);
-      return error.response;
-    }
-  }
 
   @Post('signup')
   async signup(
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignUpDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       const { email, password } = body;
       const { accessToken, refreshToken } = await this.authService.signup({
         email,
@@ -72,7 +61,7 @@ export class AuthController {
   async verification(
     @Query('token') token: string,
   ): Promise<ResponseStatusDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       const user = await this.authService.verifyEmail(token);
       if (!user)
         throw new UnauthorizedException(
@@ -87,11 +76,12 @@ export class AuthController {
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       const { accessToken, refreshToken } = await this.authService.login(
         body.email,
         body.password,
       );
+      this.cookieService.setAccessTokenCookie(res, accessToken);
       this.cookieService.setRefreshTokenCookie(res, refreshToken);
       return { accessToken };
     }, 'Log in error');
@@ -103,7 +93,7 @@ export class AuthController {
     @Req() req: { user: JwtUserDto },
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
       await this.authService.logout({ userId });
       this.cookieService.clearRefreshTokenCookie(res);
@@ -116,7 +106,7 @@ export class AuthController {
   async deleteUser(
     @Req() req: { user: JwtUserDto },
   ): Promise<ResponseStatusDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
       await this.authService.deleteUser(userId);
       return {
@@ -130,7 +120,7 @@ export class AuthController {
   async forgotPassword(
     @Body() { email }: EmailBaseDto,
   ): Promise<ResponseStatusDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       await this.authService.sendPasswordResetEmail({ email });
       return { success: true, message: 'Reset password email sent' };
     }, 'Error while sending reset password email');
@@ -141,30 +131,43 @@ export class AuthController {
     @Query('token') resetToken: string,
     @Body() { password }: PasswordBaseDto,
   ): Promise<ResponseStatusDto> {
-    return this.handleRequest(async () => {
+    return this.requestHandlerService.handleRequest(async () => {
       await this.authService.resetPassword({ resetToken, password });
       return { success: true, message: 'Password updated successfully' };
     }, 'Reset password error');
   }
 
-  @UseGuards(AuthGuard('jwt'))
-  @Post('refresh')
+  @Get('refresh')
   async refresh(
-    @Req() req: Request & { user: JwtUserDto },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenDto> {
-    return this.handleRequest(async () => {
-      const { userId } = req.user;
-      const refreshToken = req.cookies?.refresh_token;
+    return this.requestHandlerService.handleRequest(async () => {
+      const { access_token: accessToken, refresh_token: refreshToken } =
+        req.cookies;
 
-      if (!refreshToken)
-        throw new UnauthorizedException('No refresh token found');
+      if (!accessToken || !refreshToken) {
+        throw new UnauthorizedException(
+          `Missing ${!accessToken ? 'access' : 'refresh'} token`,
+        );
+      }
 
-      const { accessToken, refreshToken: newRefreshToken } =
+      let userId: string;
+
+      try {
+        const decodedToken = this.tokenService.decodeAccessToken(accessToken);
+        userId = decodedToken?.sub;
+        if (!userId) throw new UnauthorizedException('Missing user id ');
+      } catch {
+        throw new UnauthorizedException('Invalid or expired access token');
+      }
+
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.refreshToken({ userId, refreshToken });
 
       this.cookieService.setRefreshTokenCookie(res, newRefreshToken);
-      return { accessToken };
+      this.cookieService.setAccessTokenCookie(res, newAccessToken);
+      return { accessToken: newAccessToken };
     }, 'Refresh token error');
   }
 }

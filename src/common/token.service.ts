@@ -35,6 +35,16 @@ export class TokenService {
     }
   }
 
+  decodeAccessToken(accessToken: string): {
+    email: string;
+    sub: string;
+    tokenVersion: number;
+    iat: number;
+    exp: number;
+  } {
+    return this.jwtService.decode(accessToken);
+  }
+
   async createRefreshToken({ userId }: UserIdDto): Promise<string> {
     try {
       const token = uuidv4();

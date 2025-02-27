@@ -6,17 +6,30 @@ import { TokenService } from './token.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { RequestHandlerService } from './request-handler.service';
 
 @Module({
   imports: [
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'default_secret',
-      signOptions: { expiresIn: '3h' },
+      signOptions: { expiresIn: '1h' },
     }),
     PrismaModule,
   ],
-  providers: [TokenService, CookieService, MailService, PasswordService],
-  exports: [TokenService, CookieService, MailService, PasswordService],
+  providers: [
+    TokenService,
+    CookieService,
+    MailService,
+    PasswordService,
+    RequestHandlerService,
+  ],
+  exports: [
+    TokenService,
+    CookieService,
+    MailService,
+    PasswordService,
+    RequestHandlerService,
+  ],
 })
 export class CommonModule {}
