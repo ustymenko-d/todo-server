@@ -35,9 +35,16 @@ export class AuthController {
 
   private readonly logger = new Logger(AuthController.name);
 
-  private handleError(message: string, error: Error): never {
-    this.logger.error(message, error.stack);
-    throw error;
+  private async handleRequest<T>(
+    handler: () => Promise<T>,
+    errorMessage: string,
+  ): Promise<T> {
+    try {
+      return await handler();
+    } catch (error) {
+      this.logger.error(errorMessage, error.stack);
+      return error.response;
+    }
   }
 
   @Post('signup')
@@ -45,7 +52,7 @@ export class AuthController {
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignUpDto> {
-    try {
+    return this.handleRequest(async () => {
       const { email, password } = body;
       const { accessToken, refreshToken } = await this.authService.signup({
         email,
@@ -53,33 +60,26 @@ export class AuthController {
       });
 
       this.cookieService.setRefreshTokenCookie(res, refreshToken);
-
       return {
         accessToken,
         message:
           'Registration successful. Please verify your email. If you do not verify your email, your account will be deleted in a week.',
       };
-    } catch (error) {
-      this.handleError('Eror while signing up:', error);
-    }
+    }, 'Sign up error');
   }
 
   @Get('verification')
   async verification(
     @Query('token') token: string,
   ): Promise<ResponseStatusDto> {
-    try {
+    return this.handleRequest(async () => {
       const user = await this.authService.verifyEmail(token);
-
       if (!user)
         throw new UnauthorizedException(
           'Invalid or expired verification token',
         );
-
       return { success: true, message: 'Email verified successfully.' };
-    } catch (error) {
-      this.handleError('Eror during email verification:', error);
-    }
+    }, 'Eror during email verification');
   }
 
   @Post('login')
@@ -87,19 +87,14 @@ export class AuthController {
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenDto> {
-    try {
-      const { email, password } = body;
+    return this.handleRequest(async () => {
       const { accessToken, refreshToken } = await this.authService.login(
-        email,
-        password,
+        body.email,
+        body.password,
       );
-
       this.cookieService.setRefreshTokenCookie(res, refreshToken);
-
       return { accessToken };
-    } catch (error) {
-      this.handleError('Error while logging in:', error);
-    }
+    }, 'Log in error');
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -108,14 +103,12 @@ export class AuthController {
     @Req() req: { user: JwtUserDto },
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
-    try {
+    return this.handleRequest(async () => {
       const { userId } = req.user;
       await this.authService.logout({ userId });
       this.cookieService.clearRefreshTokenCookie(res);
       return { success: true, message: 'Logout successful.' };
-    } catch (error) {
-      this.handleError('Error while logging out:', error);
-    }
+    }, 'Log out error');
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -123,28 +116,24 @@ export class AuthController {
   async deleteUser(
     @Req() req: { user: JwtUserDto },
   ): Promise<ResponseStatusDto> {
-    try {
+    return this.handleRequest(async () => {
       const { userId } = req.user;
       await this.authService.deleteUser(userId);
       return {
         success: true,
         message: `User (${userId}) deleted successfully.`,
       };
-    } catch (error) {
-      this.handleError('Eror while deleteing:', error);
-    }
+    }, 'Delete account error');
   }
 
   @Post('forgot-password')
   async forgotPassword(
     @Body() { email }: EmailBaseDto,
   ): Promise<ResponseStatusDto> {
-    try {
+    return this.handleRequest(async () => {
       await this.authService.sendPasswordResetEmail({ email });
       return { success: true, message: 'Reset password email sent' };
-    } catch (error) {
-      this.handleError('Error while sending reset password email:', error);
-    }
+    }, 'Error while sending reset password email');
   }
 
   @Patch('reset-password')
@@ -152,12 +141,10 @@ export class AuthController {
     @Query('token') resetToken: string,
     @Body() { password }: PasswordBaseDto,
   ): Promise<ResponseStatusDto> {
-    try {
+    return this.handleRequest(async () => {
       await this.authService.resetPassword({ resetToken, password });
       return { success: true, message: 'Password updated successfully' };
-    } catch (error) {
-      this.handleError('Error while resetting password:', error);
-    }
+    }, 'Reset password error');
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -166,7 +153,7 @@ export class AuthController {
     @Req() req: Request & { user: JwtUserDto },
     @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenDto> {
-    try {
+    return this.handleRequest(async () => {
       const { userId } = req.user;
       const refreshToken = req.cookies?.refresh_token;
 
@@ -177,10 +164,7 @@ export class AuthController {
         await this.authService.refreshToken({ userId, refreshToken });
 
       this.cookieService.setRefreshTokenCookie(res, newRefreshToken);
-
       return { accessToken };
-    } catch (error) {
-      this.handleError('Error while resetting password:', error);
-    }
+    }, 'Refresh token error');
   }
 }
