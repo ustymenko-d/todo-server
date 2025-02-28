@@ -50,7 +50,7 @@ export class TokenService {
       const token = uuidv4();
       const hashedToken = await bcrypt.hash(token, 10);
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
+      expiresAt.setDate(expiresAt.getDate() + 3);
 
       await this.prisma.refreshToken.create({
         data: {
