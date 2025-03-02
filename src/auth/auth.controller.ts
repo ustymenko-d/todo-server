@@ -49,6 +49,8 @@ export class AuthController {
       });
 
       this.cookieService.setRefreshTokenCookie(res, refreshToken);
+      this.cookieService.setAccessTokenCookie(res, accessToken);
+
       return {
         accessToken,
         message:
@@ -59,10 +61,12 @@ export class AuthController {
 
   @Get('verification')
   async verification(
-    @Query('token') token: string,
+    @Query('verificationToken') verificationToken: string,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      const user = await this.authService.verifyEmail(token);
+      console.log(verificationToken);
+      const user = await this.authService.verifyEmail(verificationToken);
+
       if (!user)
         throw new UnauthorizedException(
           'Invalid or expired verification token',
@@ -97,6 +101,7 @@ export class AuthController {
       const { userId } = req.user;
       await this.authService.logout({ userId });
       this.cookieService.clearRefreshTokenCookie(res);
+      this.cookieService.clearAccessTokenCookie(res);
       return { success: true, message: 'Logout successful.' };
     }, 'Log out error');
   }
@@ -105,10 +110,13 @@ export class AuthController {
   @Delete('delete')
   async deleteUser(
     @Req() req: { user: JwtUserDto },
+    @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
       await this.authService.deleteUser(userId);
+      this.cookieService.clearRefreshTokenCookie(res);
+      this.cookieService.clearAccessTokenCookie(res);
       return {
         success: true,
         message: `User (${userId}) deleted successfully.`,
@@ -122,13 +130,16 @@ export class AuthController {
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.sendPasswordResetEmail({ email });
-      return { success: true, message: 'Reset password email sent' };
+      return {
+        success: true,
+        message: 'The password reset email has been sent successfully',
+      };
     }, 'Error while sending reset password email');
   }
 
   @Patch('reset-password')
   async resetPassword(
-    @Query('token') resetToken: string,
+    @Query('resetToken') resetToken: string,
     @Body() { password }: PasswordBaseDto,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
@@ -152,15 +163,7 @@ export class AuthController {
         );
       }
 
-      let userId: string;
-
-      try {
-        const decodedToken = this.tokenService.decodeAccessToken(accessToken);
-        userId = decodedToken?.sub;
-        if (!userId) throw new UnauthorizedException('Missing user id ');
-      } catch {
-        throw new UnauthorizedException('Invalid or expired access token');
-      }
+      const userId = this.tokenService.extractUserIdFromToken(accessToken);
 
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.refreshToken({ userId, refreshToken });

@@ -22,13 +22,18 @@ export class MailService {
         },
       });
 
-      const verificationUrl = `${process.env.FRONTEND_URL}/auth/verification?token=${verificationToken}`;
+      const verificationUrl = `${process.env.FRONTEND_URL}/auth/verification?verificationToken=${verificationToken}`;
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
         subject: `Verify your email on ${process.env.FRONTEND_URL}`,
-        html: `<p>Please click <a href="${verificationUrl}">this link</a> to verify your email.</p>`,
+        html: `
+        <div>
+          <p>Thanks for creating your account, please verify your email with the link below.</p>
+          <a href="${verificationUrl}">Verify email</a>
+        </div>
+        `,
       });
     } catch (error) {
       this.logger.error(error.stack);
@@ -49,7 +54,7 @@ export class MailService {
         },
       });
 
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?resetToken=${resetToken}`;
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,

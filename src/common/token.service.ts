@@ -122,6 +122,17 @@ export class TokenService {
     }
   }
 
+  extractUserIdFromToken(accessToken: string): string {
+    try {
+      const decodedToken = this.decodeAccessToken(accessToken);
+      const userId = decodedToken?.sub;
+      if (!userId) throw new UnauthorizedException('Missing user id');
+      return userId;
+    } catch {
+      throw new UnauthorizedException('Error during access token decoding');
+    }
+  }
+
   async cleanUpExpiredTokens(): Promise<void> {
     try {
       this.logger.log('Starting token cleanup...');
