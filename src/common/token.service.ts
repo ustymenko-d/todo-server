@@ -103,7 +103,7 @@ export class TokenService {
     try {
       return this.jwtService.sign(
         { userId: user.id, tokenVersion: user.tokenVersion },
-        { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
+        { secret: process.env.JWT_RESET_SECRET, expiresIn: '30m' },
       );
     } catch (error) {
       this.logger.error('Failed to create reset password token', error.stack);

@@ -27,13 +27,9 @@ export class MailService {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
-        subject: `Verify your email on ${process.env.FRONTEND_URL}`,
+        subject: `Verify your email on UpTodo`,
         html: `
-        <div>
-          <p>Thanks for creating your account, please verify your email with the link below.</p>
-          <a href="${verificationUrl}">Verify email</a>
-        </div>
-        `,
+       <!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Your Email</title></head><body style="font-family:Arial,sans-serif;background-color:#f4f4f5;padding:20px;color:#09090b"><div style="max-width:600px;margin:0 auto;background:#fafafa;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1);text-align:center;border:1px solid #d4d4d8"><h2 style="color:#09090b">Welcome to UpTodo!</h2><p style="color:#09090b">Thanks for creating your account, please verify your email with the link below.</p><a href="${verificationUrl}" style="display:inline-block;padding:10px 20px;background-color:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">Verify Email</a></div></body></html>`,
       });
     } catch (error) {
       this.logger.error(error.stack);
@@ -59,8 +55,10 @@ export class MailService {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
-        subject: `Reset Your Password on ${process.env.FRONTEND_URL}`,
-        html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link is valid for 15 minutes.</p>`,
+        subject: `Reset Your UpTodo password`,
+        html: `
+        <p>Click <a href="${resetUrl}">here</a> to reset your password. This link is valid for 15 minutes.</p>
+          <!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset Your UpTodo password</title></head><body style="font-family:Arial,sans-serif;background-color:#f4f4f5;padding:20px;color:#09090b"><div style="max-width:600px;margin:0 auto;background:#fafafa;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1);text-align:center;border:1px solid #d4d4d8"><h2 style="color:#09090b">Reset Your UpTodo password</h2><p style="color:#09090b">This link will expire after 30 minutes. If you didn't request a password reset you can delete this email.</p><a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background-color:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">Verify Email</a></div></body></html>`,
       });
     } catch (error) {
       this.logger.error(error.stack);
