@@ -45,18 +45,19 @@ export class CleanupService {
     const conditions = {
       OR: [{ expiresAt: { lt: new Date() } }, { revoked: true }],
     };
-    await this.cleanupEntities('refreshToken', conditions);
+    await this.cleanupEntities('RefreshToken', conditions);
   }
 
   private async cleanupUnverifiedUsers(): Promise<void> {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const conditions = { isVerified: false, createdAt: { lt: oneWeekAgo } };
-    await this.cleanupEntities('user', conditions);
+    await this.cleanupEntities('User', conditions);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async dailyCleaning(): Promise<void> {
+    this.logger.log('Starting daily cleaning...');
     await this.cleanupTokens();
     await this.cleanupUnverifiedUsers();
     this.logger.log('Daily cleaning is completed');

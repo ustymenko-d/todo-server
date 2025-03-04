@@ -30,17 +30,19 @@ export class FolderNameDto {
 
 export class FolderIdDto {
   @IsUUID()
+  @IsNotEmpty({ message: 'The folder ID is required.' })
   folderId: string;
 }
 
 export class RenameFolderDto extends FolderNameDto {
   @IsUUID()
+  @IsNotEmpty({ message: 'The folder ID is required.' })
   folderId: string;
 }
 
 export class FolderPayloadDto extends FolderNameDto {
   @IsUUID()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'The user ID is required.' })
   userId: string;
 }
 

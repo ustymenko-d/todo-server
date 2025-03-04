@@ -10,9 +10,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { FolderService } from './folder.service';
 import { AuthGuard } from '@nestjs/passport';
 import { FolderOwnerGuard } from './folder-owner.guard';
+import { FolderService } from './folder.service';
+import { RequestHandlerService } from 'src/common/request-handler.service';
+import { JwtUser } from 'src/common/common.dto';
 import {
   FolderIdDto,
   FolderNameDto,
@@ -20,8 +22,6 @@ import {
   GetFolderRequestDto,
   GetFolderResponseDto,
 } from './folder.dto';
-import { RequestHandlerService } from 'src/common/request-handler.service';
-import { JwtUser } from 'src/common/common.dto';
 
 @Controller('folder')
 export class FolderController {

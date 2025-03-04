@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { RequestHandlerService } from './request-handler.service';
 import { CleanupService } from './cleanup.service';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CleanupService } from './cleanup.service';
       signOptions: { expiresIn: '1h' },
     }),
     PrismaModule,
+    ScheduleModule.forRoot(),
   ],
   providers: [
     TokenService,
