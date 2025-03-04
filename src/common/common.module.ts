@@ -7,6 +7,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { RequestHandlerService } from './request-handler.service';
+import { CleanupService } from './cleanup.service';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RequestHandlerService } from './request-handler.service';
     MailService,
     PasswordService,
     RequestHandlerService,
+    CleanupService,
   ],
   exports: [
     TokenService,

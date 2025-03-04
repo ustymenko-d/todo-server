@@ -13,8 +13,10 @@ export class CookieService {
     path: '/',
   };
 
-  private readonly THREE_HOURS_IN_MS = 3 * 60 * 60 * 1000;
-  private readonly SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000;
+  private readonly EXPIRATION_TIMES = {
+    accessToken: 3 * 60 * 60 * 1000, // 3 hours
+    refreshToken: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
 
   private setCookie(
     res: Response,
@@ -33,7 +35,12 @@ export class CookieService {
   }
 
   setAccessTokenCookie(res: Response, accessToken: string) {
-    this.setCookie(res, 'access_token', accessToken, this.THREE_HOURS_IN_MS);
+    this.setCookie(
+      res,
+      'access_token',
+      accessToken,
+      this.EXPIRATION_TIMES.accessToken,
+    );
   }
 
   clearAccessTokenCookie(res: Response) {
@@ -41,7 +48,12 @@ export class CookieService {
   }
 
   setRefreshTokenCookie(res: Response, refreshToken: string) {
-    this.setCookie(res, 'refresh_token', refreshToken, this.SEVEN_DAYS_IN_MS);
+    this.setCookie(
+      res,
+      'refresh_token',
+      refreshToken,
+      this.EXPIRATION_TIMES.refreshToken,
+    );
   }
 
   clearRefreshTokenCookie(res: Response) {

@@ -7,7 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 import {
-  GetRequestDto,
+  PaginationDto,
   GetResponseDto,
   ResponseStatusDto,
 } from 'src/common/common.dto';
@@ -44,7 +44,7 @@ export class FolderPayloadDto extends FolderNameDto {
   userId: string;
 }
 
-export type GetFolderRequestDto = GetRequestDto & FolderNameDto;
+export type GetFolderRequestDto = PaginationDto & FolderNameDto;
 export type GetFolderPayloadDto = GetFolderRequestDto & FolderPayloadDto;
 
 export class FolderDto extends FolderPayloadDto {

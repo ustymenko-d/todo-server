@@ -6,7 +6,7 @@ import {
   IsUUID,
   MinLength,
 } from 'class-validator';
-import { GetRequestDto, GetResponseDto } from 'src/common/common.dto';
+import { PaginationDto, GetResponseDto } from 'src/common/common.dto';
 
 export class TaskBaseDto {
   @IsString()
@@ -61,7 +61,7 @@ export class GetTasksResponseDto {
   tasksData: ManyTasksDto;
 }
 
-export class GetTasksRequestDto extends GetRequestDto {
+export class GetTasksRequestDto extends PaginationDto {
   @IsString({ message: 'Invalid value.' })
   @IsOptional()
   title?: string;

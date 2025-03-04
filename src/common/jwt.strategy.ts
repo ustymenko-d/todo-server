@@ -6,6 +6,8 @@ import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
   constructor(private prisma: PrismaService) {
     super({
       jwtFromRequest: (req: Request) => req?.cookies?.access_token || null,
@@ -14,18 +16,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  private readonly logger = new Logger(JwtStrategy.name);
+  private isPayloadValid(payload: {
+    sub: string;
+    email: string;
+    tokenVersion: number;
+  }): boolean {
+    return (
+      !!payload?.sub && !!payload?.email && payload?.tokenVersion !== undefined
+    );
+  }
 
   async validate(payload: {
     sub: string;
     email: string;
     tokenVersion: number;
   }) {
-    if (
-      !payload?.sub ||
-      !payload?.email ||
-      payload?.tokenVersion === undefined
-    ) {
+    if (!this.isPayloadValid(payload)) {
       this.logger.warn('Invalid JWT payload');
       throw new UnauthorizedException('Invalid JWT payload');
     }

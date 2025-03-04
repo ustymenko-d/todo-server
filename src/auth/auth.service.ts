@@ -20,7 +20,6 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
 import { TokenService } from 'src/common/token.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class AuthService {
@@ -84,7 +83,7 @@ export class AuthService {
       const refreshToken = await this.tokenService.createRefreshToken({
         userId: user.id,
       });
-      const accessToken = this.tokenService.createToken(user);
+      const accessToken = this.tokenService.createAccessToken(user);
 
       await this.mailService.sendVerificationEmail({
         email,
@@ -137,7 +136,7 @@ export class AuthService {
       const refreshToken = await this.tokenService.createRefreshToken({
         userId: user.id,
       });
-      const accessToken = this.tokenService.createToken(updatedUser);
+      const accessToken = this.tokenService.createAccessToken(updatedUser);
 
       return { accessToken, refreshToken };
     } catch (error) {
@@ -232,27 +231,12 @@ export class AuthService {
       if (!user) throw new UnauthorizedException('User not found');
 
       const updatedUser = await this.incrementTokenVersion(user);
-      const newAccessToken = this.tokenService.createToken(updatedUser);
+      const newAccessToken = this.tokenService.createAccessToken(updatedUser);
 
       return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     } catch (error) {
       this.logger.error(error.stack);
       throw error;
     }
-  }
-
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async deleteUnverifiedUsers(): Promise<void> {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    const { count } = await this.prisma.user.deleteMany({
-      where: {
-        isVerified: false,
-        createdAt: { lt: oneWeekAgo },
-      },
-    });
-
-    this.logger.log(`Deleted ${count} unverified users`);
   }
 }

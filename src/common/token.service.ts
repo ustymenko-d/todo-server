@@ -3,7 +3,6 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   JwtUserDto,
   RefreshTokenPayloadDto,
@@ -13,36 +12,29 @@ import {
 
 @Injectable()
 export class TokenService {
+  private readonly logger = new Logger(TokenService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {}
 
-  private readonly logger = new Logger(TokenService.name);
+  private logAndThrowError(message: string, error: any) {
+    this.logger.error(message, error.stack);
+    throw error;
+  }
 
-  createToken(user: UserDto): string {
+  createAccessToken(user: UserDto): string {
     try {
       const payload = {
         email: user.email,
         sub: user.id,
         tokenVersion: user.tokenVersion,
       };
-
       return this.jwtService.sign(payload);
     } catch (error) {
-      this.logger.error('Failed to create access token', error.stack);
-      throw error;
+      this.logAndThrowError('Failed to create access token', error);
     }
-  }
-
-  decodeAccessToken(accessToken: string): {
-    email: string;
-    sub: string;
-    tokenVersion: number;
-    iat: number;
-    exp: number;
-  } {
-    return this.jwtService.decode(accessToken);
   }
 
   async createRefreshToken({ userId }: UserIdDto): Promise<string> {
@@ -62,8 +54,7 @@ export class TokenService {
 
       return token;
     } catch (error) {
-      this.logger.error('Failed to create refresh token', error.stack);
-      throw error;
+      this.logAndThrowError('Failed to create refresh token', error);
     }
   }
 
@@ -94,8 +85,7 @@ export class TokenService {
         data: { revoked: true },
       });
     } catch (error) {
-      this.logger.error('Failed to revoke previous tokens', error.stack);
-      throw error;
+      this.logAndThrowError('Failed to revoke previous tokens', error);
     }
   }
 
@@ -106,8 +96,7 @@ export class TokenService {
         { secret: process.env.JWT_RESET_SECRET, expiresIn: '30m' },
       );
     } catch (error) {
-      this.logger.error('Failed to create reset password token', error.stack);
-      throw error;
+      this.logAndThrowError('Failed to create reset password token', error);
     }
   }
 
@@ -117,56 +106,18 @@ export class TokenService {
         secret: process.env.JWT_RESET_SECRET,
       });
     } catch (error) {
-      this.logger.error('Failed to verify reset password token', error.stack);
-      throw error;
+      this.logAndThrowError('Failed to verify reset password token', error);
     }
   }
 
   extractUserIdFromToken(accessToken: string): string {
     try {
-      const decodedToken = this.decodeAccessToken(accessToken);
+      const decodedToken = this.jwtService.decode(accessToken);
       const userId = decodedToken?.sub;
       if (!userId) throw new UnauthorizedException('Missing user id');
       return userId;
     } catch {
       throw new UnauthorizedException('Error during access token decoding');
     }
-  }
-
-  async cleanUpExpiredTokens(): Promise<void> {
-    try {
-      this.logger.log('Starting token cleanup...');
-
-      const expiredOrRevokedTokens = await this.prisma.refreshToken.findMany({
-        where: {
-          OR: [{ expiresAt: { lt: new Date() } }, { revoked: true }],
-        },
-      });
-
-      this.logger.log(
-        `Found ${expiredOrRevokedTokens.length} tokens to clean up`,
-      );
-
-      if (expiredOrRevokedTokens.length > 0) {
-        const result = await this.prisma.refreshToken.deleteMany({
-          where: {
-            OR: [{ expiresAt: { lt: new Date() } }, { revoked: true }],
-          },
-        });
-        this.logger.log(`Deleted ${result.count} expired or revoked tokens`);
-      } else {
-        this.logger.log('No tokens to clean up.');
-      }
-    } catch (error) {
-      this.logger.error('Failed to clean up tokens', error.stack);
-      throw error;
-    }
-  }
-
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleTokenCleanup() {
-    this.logger.log('Running token cleanup job...');
-    await this.cleanUpExpiredTokens();
-    this.logger.log('Token cleanup job completed');
   }
 }
