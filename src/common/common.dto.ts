@@ -27,3 +27,9 @@ export class GetResponseDto extends PaginationDto {
   @IsInt()
   total: number;
 }
+
+export type JwtUser = {
+  userId: string;
+  email: string;
+  tokenVersion: number;
+};

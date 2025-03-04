@@ -3,12 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import {
-  JwtUserDto,
-  RefreshTokenPayloadDto,
-  UserDto,
-  UserIdDto,
-} from 'src/auth/auth.dto';
+import { RefreshTokenPayloadDto, UserDto } from 'src/auth/auth.dto';
 
 @Injectable()
 export class TokenService {
@@ -37,7 +32,7 @@ export class TokenService {
     }
   }
 
-  async createRefreshToken({ userId }: UserIdDto): Promise<string> {
+  async createRefreshToken(userId: string): Promise<string> {
     try {
       const token = uuidv4();
       const hashedToken = await bcrypt.hash(token, 10);
@@ -78,7 +73,7 @@ export class TokenService {
       throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
-  async revokePreviousTokens({ userId }: UserIdDto): Promise<void> {
+  async revokePreviousTokens(userId: string): Promise<void> {
     try {
       await this.prisma.refreshToken.updateMany({
         where: { userId, revoked: false },
@@ -100,7 +95,11 @@ export class TokenService {
     }
   }
 
-  verifyPasswordResetToken(resetToken: string): JwtUserDto {
+  verifyPasswordResetToken(resetToken: string): {
+    userId: string;
+    email: string;
+    tokenVersion: number;
+  } {
     try {
       return this.jwtService.verify(resetToken, {
         secret: process.env.JWT_RESET_SECRET,

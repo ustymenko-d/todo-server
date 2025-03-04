@@ -13,17 +13,10 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import {
-  AccessTokenDto,
-  AuthBaseDto,
-  EmailBaseDto,
-  JwtUserDto,
-  PasswordBaseDto,
-  SignUpDto,
-} from './auth.dto';
+import { AuthBaseDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
 import { Request, Response } from 'express';
 import { CookieService } from '../common/cookie.service';
-import { ResponseStatusDto } from 'src/common/common.dto';
+import { JwtUser, ResponseStatusDto } from 'src/common/common.dto';
 import { RequestHandlerService } from 'src/common/request-handler.service';
 import { TokenService } from 'src/common/token.service';
 
@@ -40,21 +33,17 @@ export class AuthController {
   async signup(
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<SignUpDto> {
+  ): Promise<{ accessToken: string; message: string }> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password } = body;
       const { accessToken, refreshToken } = await this.authService.signup({
         email,
         password,
       });
-
-      this.cookieService.setRefreshTokenCookie(res, refreshToken);
-      this.cookieService.setAccessTokenCookie(res, accessToken);
-
+      this.setAuthCookies(res, accessToken, refreshToken);
       return {
         accessToken,
-        message:
-          'Registration successful. Please verify your email. If you do not verify your email, your account will be deleted in a week.',
+        message: 'Registration successful. Please verify your email.',
       };
     }, 'Sign up error');
   }
@@ -64,14 +53,8 @@ export class AuthController {
     @Query('verificationToken') verificationToken: string,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      console.log(verificationToken);
-      const user = await this.authService.verifyEmail(verificationToken);
-
-      if (!user)
-        throw new UnauthorizedException(
-          'Invalid or expired verification token',
-        );
-      return { success: true, message: 'Email verified successfully.' };
+      await this.authService.verifyEmail(verificationToken);
+      return { success: true, message: 'Email verified successfully' };
     }, 'Eror during email verification');
   }
 
@@ -79,14 +62,14 @@ export class AuthController {
   async login(
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AccessTokenDto> {
+  ): Promise<{ accessToken: string }> {
     return this.requestHandlerService.handleRequest(async () => {
-      const { accessToken, refreshToken } = await this.authService.login(
-        body.email,
-        body.password,
-      );
-      this.cookieService.setAccessTokenCookie(res, accessToken);
-      this.cookieService.setRefreshTokenCookie(res, refreshToken);
+      const { email, password } = body;
+      const { accessToken, refreshToken } = await this.authService.login({
+        email,
+        password,
+      });
+      this.setAuthCookies(res, accessToken, refreshToken);
       return { accessToken };
     }, 'Log in error');
   }
@@ -94,32 +77,30 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   async logout(
-    @Req() req: { user: JwtUserDto },
+    @Req()
+    req: { user: JwtUser },
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      const { userId } = req.user;
-      await this.authService.logout({ userId });
-      this.cookieService.clearRefreshTokenCookie(res);
-      this.cookieService.clearAccessTokenCookie(res);
-      return { success: true, message: 'Logout successful.' };
+      await this.authService.logout(req.user.userId);
+      this.clearAuthCookies(res);
+      return { success: true, message: 'Logout successful' };
     }, 'Log out error');
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Delete('delete')
   async deleteUser(
-    @Req() req: { user: JwtUserDto },
+    @Req()
+    req: { user: JwtUser },
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      const { userId } = req.user;
-      await this.authService.deleteUser(userId);
-      this.cookieService.clearRefreshTokenCookie(res);
-      this.cookieService.clearAccessTokenCookie(res);
+      await this.authService.deleteUser(req.user.userId);
+      this.clearAuthCookies(res);
       return {
         success: true,
-        message: `User (${userId}) deleted successfully.`,
+        message: `User deleted successfully`,
       };
     }, 'Delete account error');
   }
@@ -132,7 +113,7 @@ export class AuthController {
       await this.authService.sendPasswordResetEmail({ email });
       return {
         success: true,
-        message: 'The password reset email has been sent successfully',
+        message: 'Password reset email sent successfully',
       };
     }, 'Error while sending reset password email');
   }
@@ -152,25 +133,34 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<AccessTokenDto> {
+  ): Promise<{ accessToken: string }> {
     return this.requestHandlerService.handleRequest(async () => {
       const { access_token: accessToken, refresh_token: refreshToken } =
         req.cookies;
 
-      if (!accessToken || !refreshToken) {
-        throw new UnauthorizedException(
-          `Missing ${!accessToken ? 'access' : 'refresh'} token`,
-        );
-      }
+      if (!accessToken || !refreshToken)
+        throw new UnauthorizedException('Missing access or refresh token');
 
       const userId = this.tokenService.extractUserIdFromToken(accessToken);
-
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.refreshToken({ userId, refreshToken });
 
-      this.cookieService.setRefreshTokenCookie(res, newRefreshToken);
-      this.cookieService.setAccessTokenCookie(res, newAccessToken);
+      this.setAuthCookies(res, newAccessToken, newRefreshToken);
       return { accessToken: newAccessToken };
     }, 'Refresh token error');
+  }
+
+  private setAuthCookies(
+    res: Response,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    this.cookieService.setAccessTokenCookie(res, accessToken);
+    this.cookieService.setRefreshTokenCookie(res, refreshToken);
+  }
+
+  private clearAuthCookies(res: Response) {
+    this.cookieService.clearAccessTokenCookie(res);
+    this.cookieService.clearRefreshTokenCookie(res);
   }
 }

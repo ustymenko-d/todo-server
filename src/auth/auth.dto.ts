@@ -2,8 +2,6 @@ import {
   IsBoolean,
   IsDate,
   IsEmail,
-  IsJWT,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -13,86 +11,39 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class PasswordBaseDto {
+class PasswordBase {
   @IsString()
-  @MinLength(8, { message: 'The password must be at least 8 characters long.' })
-  @MaxLength(64, { message: 'The password must not exceed 64 characters.' })
+  @MinLength(8, { message: 'Password must be at least 8 characters long.' })
+  @MaxLength(64, { message: 'Password must not exceed 64 characters.' })
   @Matches(/(?=.*[A-Z])/, {
-    message: 'The password must contain at least one capital letter.',
+    message: 'Password must contain at least one capital letter.',
   })
   @Matches(/(?=.*[a-z])/, {
-    message: 'The password must contain at least one lowercase letter.',
+    message: 'Password must contain at least one lowercase letter.',
   })
   @Matches(/(?=.*\d)/, {
-    message: 'The password must contain at least one digit.',
+    message: 'Password must contain at least one digit.',
   })
   password: string;
 }
 
-export class EmailBaseDto {
-  @IsEmail({}, { message: 'Invalid email address.' })
-  @IsString()
-  email: string;
-}
-
-export class AuthBaseDto extends PasswordBaseDto {
+class EmailBase {
   @IsEmail({}, { message: 'Invalid email address.' })
   email: string;
 }
 
-export class RefreshTokenDto {
-  @IsString()
-  id: string;
+export class PasswordBaseDto extends PasswordBase {}
+export class EmailBaseDto extends EmailBase {}
 
-  @IsString()
-  @IsNotEmpty({ message: 'User ID is required.' })
-  userId: string;
-
-  @IsString()
-  token: string;
-
-  @IsDate()
-  createdAt: Date;
-
-  @IsDate()
-  expiresAt: Date;
-
-  @IsBoolean()
-  revoked: boolean;
+export class AuthBaseDto extends PasswordBase {
+  @IsEmail({}, { message: 'Invalid email address.' })
+  email: string;
 }
 
-export class JwtUserDto {
-  @IsString()
-  @IsNotEmpty({ message: 'User ID is required.' })
-  userId: string;
-
-  @IsNumber()
-  tokenVersion: number;
-}
-
-export class AccessTokenDto {
-  @IsString()
-  @IsNotEmpty()
-  accessToken: string;
-}
-
-export class SignUpDto extends AccessTokenDto {
-  @IsString()
-  message: string;
-}
-
-export class TokenPairDto extends AccessTokenDto {
-  @IsString()
-  @IsNotEmpty()
-  refreshToken: string;
-}
-
-export class UserIdDto {
+export class RefreshTokenPayloadDto {
   @IsUUID()
   userId: string;
-}
 
-export class RefreshTokenPayloadDto extends UserIdDto {
   @IsUUID()
   refreshToken: string;
 }
@@ -121,22 +72,7 @@ export class UserDto extends PasswordBaseDto {
   createdAt: Date;
 }
 
-export class VerificationPayloadDto extends EmailBaseDto {
-  @IsUUID()
-  verificationToken: string;
-}
-
-export class PasswordResetMailDto extends EmailBaseDto {
-  @IsJWT({ message: 'Invalid token.' })
-  resetToken: string;
-}
-
-export class PasswordResetPayloadDto extends PasswordBaseDto {
-  @IsJWT({ message: 'Invalid token.' })
-  resetToken: string;
-}
-
-export class PasswordPairDto extends PasswordBaseDto {
-  @IsString()
-  hashedPassword: string;
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
 }

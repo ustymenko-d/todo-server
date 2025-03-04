@@ -13,7 +13,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { RequestHandlerService } from 'src/common/request-handler.service';
 import { TaskOwnerGuard } from './task-owner.guard';
 import { TasksService } from './tasks.service';
-import { JwtUserDto } from 'src/auth/auth.dto';
 import {
   GetTasksRequestDto,
   GetTasksResponseDto,
@@ -22,6 +21,7 @@ import {
   TaskIdDto,
   TaskResponseDto,
 } from './tasks.dto';
+import { JwtUser } from 'src/common/common.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -33,7 +33,7 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'))
   @Post('get')
   async get(
-    @Req() req: { user: JwtUserDto },
+    @Req() req: { user: JwtUser },
     @Body() body: GetTasksRequestDto,
   ): Promise<GetTasksResponseDto> {
     return this.requestHandlerService.handleRequest(async () => {
@@ -48,7 +48,7 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'))
   @Post('create')
   async create(
-    @Req() req: { user: JwtUserDto },
+    @Req() req: { user: JwtUser },
     @Body() body: TaskBaseDto,
   ): Promise<TaskResponseDto> {
     return this.requestHandlerService.handleRequest(async () => {

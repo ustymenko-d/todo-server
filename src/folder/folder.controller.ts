@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { FolderService } from './folder.service';
 import { AuthGuard } from '@nestjs/passport';
-import { JwtUserDto } from 'src/auth/auth.dto';
 import { FolderOwnerGuard } from './folder-owner.guard';
 import {
   FolderIdDto,
@@ -22,6 +21,7 @@ import {
   GetFolderResponseDto,
 } from './folder.dto';
 import { RequestHandlerService } from 'src/common/request-handler.service';
+import { JwtUser } from 'src/common/common.dto';
 
 @Controller('folder')
 export class FolderController {
@@ -33,7 +33,8 @@ export class FolderController {
   @UseGuards(AuthGuard('jwt'))
   @Post()
   async create(
-    @Req() req: { user: JwtUserDto },
+    @Req()
+    req: { user: JwtUser },
     @Body() body: FolderNameDto,
   ): Promise<FolderResponseDto> {
     return this.requestHandlerService.handleRequest(async () => {
@@ -53,7 +54,8 @@ export class FolderController {
   @UseGuards(AuthGuard('jwt'))
   @Get()
   async get(
-    @Req() req: { user: JwtUserDto },
+    @Req()
+    req: { user: JwtUser },
     @Query() query: GetFolderRequestDto,
   ): Promise<GetFolderResponseDto> {
     return this.requestHandlerService.handleRequest(async () => {

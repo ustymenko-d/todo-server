@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import {
-  PasswordResetMailDto,
-  VerificationPayloadDto,
-} from 'src/auth/auth.dto';
 
 @Injectable()
 export class MailService {
@@ -42,10 +38,13 @@ export class MailService {
   async sendVerificationEmail({
     email,
     verificationToken,
-  }: VerificationPayloadDto): Promise<void> {
+  }: {
+    email: string;
+    verificationToken: string;
+  }): Promise<void> {
     try {
       const verificationUrl = `${process.env.FRONTEND_URL}/auth/verification?verificationToken=${verificationToken}`;
-      const html = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Your Email</title></head><body style="font-family:Arial,sans-serif;background-color:#f4f4f5;padding:20px;color:#09090b"><div style="max-width:600px;margin:0 auto;background:#fafafa;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1);text-align:center;border:1px solid #d4d4d8"><h2 style="color:#09090b">Welcome to UpTodo!</h2><p style="color:#09090b">Thanks for creating your account, please verify your email with the link below.</p><a href="${verificationUrl}" style="display:inline-block;padding:10px 20px;background-color:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">Verify Email</a></div></body></html>`;
+      const html = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Your Email</title></head><body style="font-family:Arial,sans-serif;background-color:#f4f4f5;padding:20px;color:#09090b"><div style="max-width:600px;margin:0 auto;background:#fafafa;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1);text-align:center;border:1px solid #d4d4d8"><h2 style="color:#09090b">Welcome to UpTodo!</h2><p style="color:#09090b">Thanks for creating your account, please verify your email with the link below. If you don't verify your email, your account will be deleted in a week.</p><a href="${verificationUrl}" style="display:inline-block;padding:10px 20px;background-color:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">Verify Email</a></div></body></html>`;
 
       await this.sendEmail({
         to: email,
@@ -61,7 +60,10 @@ export class MailService {
   async sendPasswordResetEmail({
     email,
     resetToken,
-  }: PasswordResetMailDto): Promise<void> {
+  }: {
+    email: string;
+    resetToken: string;
+  }): Promise<void> {
     try {
       const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?resetToken=${resetToken}`;
       const html = `

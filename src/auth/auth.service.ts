@@ -10,11 +10,9 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   AuthBaseDto,
   EmailBaseDto,
-  PasswordResetPayloadDto,
   RefreshTokenPayloadDto,
-  TokenPairDto,
+  TokenPair,
   UserDto,
-  UserIdDto,
 } from './auth.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
@@ -23,6 +21,8 @@ import { TokenService } from 'src/common/token.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
@@ -30,7 +30,16 @@ export class AuthService {
     private readonly passwordService: PasswordService,
   ) {}
 
-  private readonly logger = new Logger(AuthService.name);
+  private handleError(error: any, errorMessage: string): void {
+    this.logger.error(error.stack || error);
+    throw new InternalServerErrorException(errorMessage);
+  }
+
+  private async getUserById(userId: string): Promise<UserDto> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+    return user;
+  }
 
   private async createUser(
     email: string,
@@ -54,7 +63,7 @@ export class AuthService {
       ) {
         throw new ConflictException('User with this email already exists');
       }
-      throw new InternalServerErrorException('Creating user failed');
+      this.handleError(error, 'Creating user failed');
     }
   }
 
@@ -69,7 +78,13 @@ export class AuthService {
     return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  async signup({ email, password }: AuthBaseDto): Promise<TokenPairDto> {
+  private async revokeTokensAndUpdateUser(userId: string): Promise<UserDto> {
+    await this.tokenService.revokePreviousTokens(userId);
+    const user = await this.getUserById(userId);
+    return this.incrementTokenVersion(user);
+  }
+
+  async signup({ email, password }: AuthBaseDto): Promise<TokenPair> {
     try {
       const verificationToken = uuidv4();
       const hashedPassword = await this.passwordService.hashPassword({
@@ -80,9 +95,7 @@ export class AuthService {
         hashedPassword,
         verificationToken,
       );
-      const refreshToken = await this.tokenService.createRefreshToken({
-        userId: user.id,
-      });
+      const refreshToken = await this.tokenService.createRefreshToken(user.id);
       const accessToken = this.tokenService.createAccessToken(user);
 
       await this.mailService.sendVerificationEmail({
@@ -92,12 +105,11 @@ export class AuthService {
 
       return { accessToken, refreshToken };
     } catch (error) {
-      this.logger.error(error);
-      throw error;
+      this.handleError(error, 'Signup failed');
     }
   }
 
-  async verifyEmail(token: string): Promise<UserDto> {
+  async verifyEmail(token: string): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { verificationToken: token },
@@ -109,97 +121,76 @@ export class AuthService {
         where: { id: user.id },
         data: { isVerified: true, verificationToken: null },
       });
-
-      return user;
     } catch (error) {
-      this.logger.error(error);
-      throw error;
+      this.handleError(error, 'Email verification failed');
     }
   }
 
-  async login(email: string, password: string): Promise<TokenPairDto> {
+  async login({ email, password }: AuthBaseDto): Promise<TokenPair> {
     try {
       const user = await this.prisma.user.findUnique({ where: { email } });
-
       if (
         !user ||
-        !(await this.passwordService.comparePasswords({
-          password,
-          hashedPassword: user.password,
-        }))
+        !(await this.passwordService.comparePasswords(password, user.password))
       )
         throw new UnauthorizedException('Invalid credentials');
 
-      const updatedUser = await this.incrementTokenVersion(user);
-      await this.tokenService.revokePreviousTokens({ userId: user.id });
-
-      const refreshToken = await this.tokenService.createRefreshToken({
-        userId: user.id,
-      });
+      const updatedUser = await this.revokeTokensAndUpdateUser(user.id);
+      const refreshToken = await this.tokenService.createRefreshToken(
+        updatedUser.id,
+      );
       const accessToken = this.tokenService.createAccessToken(updatedUser);
 
       return { accessToken, refreshToken };
     } catch (error) {
-      this.logger.error(error);
-      throw error;
+      this.handleError(error, 'Login failed');
     }
   }
 
-  async logout({ userId }: UserIdDto): Promise<void> {
+  async logout(userId: string): Promise<void> {
     try {
-      await this.tokenService.revokePreviousTokens({ userId });
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (!user) throw new UnauthorizedException('User not found');
-      await this.incrementTokenVersion(user);
+      await this.revokeTokensAndUpdateUser(userId);
     } catch (error) {
-      this.logger.error(error);
-      throw error;
+      this.handleError(error, 'Logout failed');
     }
   }
 
   async deleteUser(userId: string): Promise<void> {
     try {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-
-      if (!user) throw new UnauthorizedException('User not found');
-
-      await this.prisma.user.delete({ where: { id: userId } });
+      const user = await this.getUserById(userId);
+      await this.prisma.user.delete({ where: { id: user.id } });
     } catch (error) {
-      this.logger.error(error.stack);
-      throw error;
+      this.handleError(error, 'Delete user failed');
     }
   }
 
   async sendPasswordResetEmail({ email }: EmailBaseDto): Promise<void> {
     try {
       const user = await this.prisma.user.findUnique({ where: { email } });
-
       if (!user) throw new UnauthorizedException('User not found');
-
-      const resetToken = await this.tokenService.createPasswordResetToken(user);
-
-      this.mailService.sendPasswordResetEmail({ email, resetToken });
-
+      const resetToken = this.tokenService.createPasswordResetToken(user);
+      await this.mailService.sendPasswordResetEmail({ email, resetToken });
       this.logger.log(`Reset password email sent to ${email}`);
     } catch (error) {
-      this.logger.error(error.stack);
-      throw error;
+      this.handleError(error, 'Password reset email send failed');
     }
   }
 
   async resetPassword({
     resetToken,
     password,
-  }: PasswordResetPayloadDto): Promise<void> {
+  }: {
+    resetToken: string;
+    password: string;
+  }): Promise<void> {
     try {
       const { userId, tokenVersion } =
         this.tokenService.verifyPasswordResetToken(resetToken);
-
       const user = await this.prisma.user.findUnique({
         where: { id: userId, tokenVersion },
       });
 
-      if (!user) throw new UnauthorizedException('Invalid token');
+      if (!user) throw new UnauthorizedException('User not found');
 
       const hashedPassword = await this.passwordService.hashPassword({
         password,
@@ -210,33 +201,28 @@ export class AuthService {
         data: { password: hashedPassword, tokenVersion: { increment: 1 } },
       });
     } catch (error) {
-      this.logger.error(error.stack);
-      throw error;
+      this.handleError(error, 'Password reset failed');
     }
   }
 
   async refreshToken({
     userId,
     refreshToken,
-  }: RefreshTokenPayloadDto): Promise<TokenPairDto> {
+  }: RefreshTokenPayloadDto): Promise<TokenPair> {
     try {
       await this.tokenService.validateRefreshToken({ userId, refreshToken });
-      await this.tokenService.revokePreviousTokens({ userId });
+      await this.tokenService.revokePreviousTokens(userId);
 
-      const newRefreshToken = await this.tokenService.createRefreshToken({
-        userId,
-      });
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-
-      if (!user) throw new UnauthorizedException('User not found');
+      const newRefreshToken =
+        await this.tokenService.createRefreshToken(userId);
+      const user = await this.getUserById(userId);
 
       const updatedUser = await this.incrementTokenVersion(user);
       const newAccessToken = this.tokenService.createAccessToken(updatedUser);
 
       return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     } catch (error) {
-      this.logger.error(error.stack);
-      throw error;
+      this.handleError(error, 'Refresh token failed');
     }
   }
 }
