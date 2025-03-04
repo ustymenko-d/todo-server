@@ -71,7 +71,7 @@ export class AuthController {
       });
       this.setAuthCookies(res, accessToken, refreshToken);
       return { accessToken };
-    }, 'Log in error');
+    }, 'Login error');
   }
 
   @UseGuards(AuthGuard('jwt'))

@@ -28,17 +28,18 @@ export class TaskBaseDto {
   @IsOptional()
   expiresAt?: Date | null;
 
-  @IsOptional()
   @IsUUID()
+  @IsOptional()
   folderId?: string | null;
 }
 
-export class TaskBaseAndOwnerDto extends TaskBaseDto {
+export class CreateTaskPayload extends TaskBaseDto {
   @IsString()
+  @IsUUID()
   userId: string;
 }
 
-export class TaskDto extends TaskBaseAndOwnerDto {
+export class TaskDto extends CreateTaskPayload {
   @IsString()
   @IsNotEmpty({ message: 'The task ID is required.' })
   id: string;
@@ -85,10 +86,12 @@ export class GetTasksRequestDto extends PaginationDto {
 
 export class GetTasksPayloadDto extends GetTasksRequestDto {
   @IsString()
+  @IsUUID()
   userId: string;
 }
 
 export class TaskIdDto {
+  @IsString()
   @IsUUID()
   taskId: string;
 }

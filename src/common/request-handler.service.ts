@@ -7,11 +7,13 @@ export class RequestHandlerService {
   async handleRequest<T>(
     handler: () => Promise<T>,
     errorMessage: string,
+    throwError: boolean = false,
   ): Promise<T> {
     try {
       return await handler();
     } catch (error) {
-      this.logger.error(errorMessage, error.stack);
+      this.logger.error(errorMessage, error.stack || error);
+      if (throwError) throw error;
       return error.response;
     }
   }

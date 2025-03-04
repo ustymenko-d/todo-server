@@ -37,9 +37,10 @@ export class TasksController {
     @Body() body: GetTasksRequestDto,
   ): Promise<GetTasksResponseDto> {
     return this.requestHandlerService.handleRequest(async () => {
+      const { userId } = req.user;
       const tasksData = await this.tasksService.getTasks({
         ...body,
-        userId: req.user.userId,
+        userId,
       });
       return { success: true, tasksData };
     }, 'Error while fetching tasks');
@@ -52,9 +53,10 @@ export class TasksController {
     @Body() body: TaskBaseDto,
   ): Promise<TaskResponseDto> {
     return this.requestHandlerService.handleRequest(async () => {
+      const { userId } = req.user;
       const createdTask = await this.tasksService.createTask({
         ...body,
-        userId: req.user.userId,
+        userId,
       });
       return { success: true, task: createdTask };
     }, 'Error while creating a task');
