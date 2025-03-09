@@ -201,7 +201,8 @@ export class AuthService {
           where: { id: userId, tokenVersion },
         });
 
-        if (!user) throw new UnauthorizedException('User not found');
+        if (!user)
+          throw new UnauthorizedException('User not found or invalid token');
 
         const hashedPassword = await this.passwordService.hashPassword({
           password,
