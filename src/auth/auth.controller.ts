@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthBaseDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
+import { AuthDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
 import { Request, Response } from 'express';
 import { CookieService } from '../common/cookie.service';
 import { JwtUser, ResponseStatusDto } from 'src/common/common.dto';
@@ -31,16 +31,16 @@ export class AuthController {
 
   @Post('signup')
   async signup(
-    @Body() body: AuthBaseDto,
+    @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      const { email, password } = body;
+      const { email, password, rememberMe } = body;
       const { accessToken, refreshToken } = await this.authService.signup({
         email,
         password,
       });
-      this.setAuthCookies(res, accessToken, refreshToken);
+      this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
       return {
         success: true,
         message: 'Registration successful. Please verify your email.',
@@ -60,16 +60,16 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() body: AuthBaseDto,
+    @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      const { email, password } = body;
+      const { email, password, rememberMe } = body;
       const { accessToken, refreshToken } = await this.authService.login({
         email,
         password,
       });
-      this.setAuthCookies(res, accessToken, refreshToken);
+      this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
       return { success: true, message: 'Login successful' };
     }, 'Login error');
   }
@@ -133,6 +133,7 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Query('rememberMe') rememberMe?: string,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       const { access_token: accessToken, refresh_token: refreshToken } =
@@ -145,7 +146,12 @@ export class AuthController {
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.refreshToken({ userId, refreshToken });
 
-      this.setAuthCookies(res, newAccessToken, newRefreshToken);
+      this.setAuthCookies(
+        res,
+        newAccessToken,
+        newRefreshToken,
+        rememberMe === 'true',
+      );
       return { success: true, message: 'Tokens updated successfully' };
     }, 'Refresh token error');
   }
@@ -154,9 +160,10 @@ export class AuthController {
     res: Response,
     accessToken: string,
     refreshToken: string,
+    rememberMe: boolean = false,
   ) {
-    this.cookieService.setAccessTokenCookie(res, accessToken);
-    this.cookieService.setRefreshTokenCookie(res, refreshToken);
+    this.cookieService.setAccessTokenCookie(res, accessToken, rememberMe);
+    this.cookieService.setRefreshTokenCookie(res, refreshToken, rememberMe);
   }
 
   private clearAuthCookies(res: Response) {

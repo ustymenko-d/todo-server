@@ -40,6 +40,11 @@ export class AuthBaseDto extends PasswordBase {
   email: string;
 }
 
+export class AuthDto extends AuthBaseDto {
+  @IsBoolean()
+  rememberMe: boolean;
+}
+
 export class RefreshTokenPayloadDto {
   @IsUUID()
   userId: string;

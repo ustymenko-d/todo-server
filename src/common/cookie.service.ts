@@ -22,24 +22,28 @@ export class CookieService {
     res: Response,
     name: string,
     value: string,
-    maxAge: number,
+    maxAge?: number,
   ) {
-    res.cookie(name, value, {
-      ...this.COOKIE_OPTIONS,
-      maxAge,
-    });
+    const options = maxAge
+      ? { ...this.COOKIE_OPTIONS, maxAge }
+      : this.COOKIE_OPTIONS;
+    res.cookie(name, value, options);
   }
 
   private clearCookie(res: Response, name: string) {
     res.clearCookie(name, this.COOKIE_OPTIONS);
   }
 
-  setAccessTokenCookie(res: Response, accessToken: string) {
+  setAccessTokenCookie(
+    res: Response,
+    accessToken: string,
+    rememberMe: boolean,
+  ) {
     this.setCookie(
       res,
       'access_token',
       accessToken,
-      this.EXPIRATION_TIMES.accessToken,
+      rememberMe ? this.EXPIRATION_TIMES.accessToken : undefined,
     );
   }
 
@@ -47,12 +51,16 @@ export class CookieService {
     this.clearCookie(res, 'access_token');
   }
 
-  setRefreshTokenCookie(res: Response, refreshToken: string) {
+  setRefreshTokenCookie(
+    res: Response,
+    refreshToken: string,
+    rememberMe: boolean,
+  ) {
     this.setCookie(
       res,
       'refresh_token',
       refreshToken,
-      this.EXPIRATION_TIMES.refreshToken,
+      rememberMe ? this.EXPIRATION_TIMES.refreshToken : undefined,
     );
   }
 
