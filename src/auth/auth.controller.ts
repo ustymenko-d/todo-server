@@ -33,7 +33,7 @@ export class AuthController {
   async signup(
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ accessToken: string; message: string }> {
+  ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password } = body;
       const { accessToken, refreshToken } = await this.authService.signup({
@@ -42,7 +42,7 @@ export class AuthController {
       });
       this.setAuthCookies(res, accessToken, refreshToken);
       return {
-        accessToken,
+        success: true,
         message: 'Registration successful. Please verify your email.',
       };
     }, 'Sign up error');
@@ -62,7 +62,7 @@ export class AuthController {
   async login(
     @Body() body: AuthBaseDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password } = body;
       const { accessToken, refreshToken } = await this.authService.login({
@@ -70,7 +70,7 @@ export class AuthController {
         password,
       });
       this.setAuthCookies(res, accessToken, refreshToken);
-      return { accessToken };
+      return { success: true, message: 'Login successful' };
     }, 'Login error');
   }
 
@@ -133,7 +133,7 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       const { access_token: accessToken, refresh_token: refreshToken } =
         req.cookies;
@@ -146,7 +146,7 @@ export class AuthController {
         await this.authService.refreshToken({ userId, refreshToken });
 
       this.setAuthCookies(res, newAccessToken, newRefreshToken);
-      return { accessToken: newAccessToken };
+      return { success: true, message: 'Tokens updated successfully' };
     }, 'Refresh token error');
   }
 
