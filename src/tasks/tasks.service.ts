@@ -44,7 +44,7 @@ export class TasksService {
   private async validateTaskCreation(userId: string): Promise<void> {
     if (!(await this.isUserVerified(userId))) {
       const taskCount = await this.getUserTaskCount(userId);
-      if (taskCount >= 10)
+      if (taskCount > 10)
         throw new ForbiddenException(
           'Unverified users cannot create more than ten tasks',
         );
