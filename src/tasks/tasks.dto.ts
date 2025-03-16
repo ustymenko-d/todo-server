@@ -48,6 +48,10 @@ export class TaskDto extends CreateTaskPayload {
   createdAt?: Date;
 }
 
+export interface TaskWithSubtasks extends TaskDto {
+  subtasks: TaskDto[];
+}
+
 export class TaskResponseDto {
   success: boolean;
   task: TaskDto;
