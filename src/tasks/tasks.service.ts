@@ -13,6 +13,7 @@ import {
   ManyTasksDto,
   TaskDto,
   TaskIdDto,
+  TaskWithSubtasks,
 } from './tasks.dto';
 
 @Injectable()
@@ -36,18 +37,68 @@ export class TasksService {
     });
   }
 
-  private async ensureTaskExists(id: string): Promise<void> {
-    const task = await this.prisma.task.findUnique({ where: { id } });
-    if (!task) throw new NotFoundException(`Task with id ${id} not found`);
+  private async getTaskById(
+    taskId: string,
+    includeSubtasks: boolean = false,
+  ): Promise<TaskDto | TaskWithSubtasks> {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { subtasks: includeSubtasks },
+    });
+
+    if (!task)
+      throw new NotFoundException(`Task with id: '${taskId}' not found`);
+
+    return task;
   }
 
   private async validateTaskCreation(userId: string): Promise<void> {
-    if (!(await this.isUserVerified(userId))) {
-      const taskCount = await this.getUserTaskCount(userId);
-      if (taskCount > 10)
-        throw new ForbiddenException(
-          'Unverified users cannot create more than ten tasks',
-        );
+    if (
+      !(await this.isUserVerified(userId)) &&
+      (await this.getUserTaskCount(userId)) >= 10
+    ) {
+      throw new ForbiddenException(
+        'Unverified users cannot create more than ten tasks',
+      );
+    }
+  }
+
+  private async getAllSubtaskIds(taskId: string): Promise<string[]> {
+    const subtasks = await this.prisma.task.findMany({
+      where: { parentTaskId: taskId },
+      select: { id: true },
+    });
+
+    let subtaskIds = subtasks.map((task) => task.id);
+
+    for (const subtask of subtasks) {
+      subtaskIds = subtaskIds.concat(await this.getAllSubtaskIds(subtask.id));
+    }
+
+    return subtaskIds;
+  }
+
+  private async handleSubtaskUpdates(
+    task: TaskWithSubtasks,
+    newParentId: string | null,
+  ) {
+    if (!newParentId) return;
+
+    const { id, parentTaskId, subtasks } = task;
+
+    if (subtasks.some((sub) => sub.id === newParentId)) {
+      await this.prisma.task.updateMany({
+        where: { parentTaskId: id },
+        data: { parentTaskId: parentTaskId || null },
+      });
+    } else {
+      const allSubtasks = await this.getAllSubtaskIds(id);
+      if (allSubtasks.includes(newParentId)) {
+        await this.prisma.task.update({
+          where: { id: newParentId },
+          data: { parentTaskId: parentTaskId || null },
+        });
+      }
     }
   }
 
@@ -111,7 +162,7 @@ export class TasksService {
       async () => {
         const { userId, parentTaskId } = payload;
         await this.validateTaskCreation(userId);
-        if (parentTaskId) await this.ensureTaskExists(parentTaskId);
+        if (parentTaskId) await this.getTaskById(parentTaskId);
         return await this.prisma.task.create({
           data: {
             ...payload,
@@ -128,9 +179,14 @@ export class TasksService {
   async editTask(payload: TaskDto): Promise<TaskDto> {
     return await this.requestHandlerService.handleRequest(
       async () => {
-        await this.ensureTaskExists(payload.id);
+        const { id, parentTaskId } = payload;
+        const task = await this.getTaskById(id, true);
+
+        if ('subtasks' in task && task.subtasks.length > 0)
+          await this.handleSubtaskUpdates(task, parentTaskId);
+
         return await this.prisma.task.update({
-          where: { id: payload.id },
+          where: { id },
           data: { ...payload },
         });
       },
