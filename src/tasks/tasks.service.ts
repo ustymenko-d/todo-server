@@ -8,14 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RequestHandlerService } from 'src/common/request-handler.service';
-import {
-  CreateTaskPayload,
-  GetTasksPayloadDto,
-  ManyTasksDto,
-  TaskDto,
-  TaskIdDto,
-  TaskWithSubtasks,
-} from './tasks.dto';
+import { GetTasksPayloadDto, TaskDto } from './tasks.dto';
+import { ICreateTaskPayload, ITask, ITasks } from './task.types';
 
 @Injectable()
 export class TasksService {
@@ -41,7 +35,7 @@ export class TasksService {
   private async getTaskById(
     taskId: string,
     includeSubtasks: boolean = false,
-  ): Promise<TaskDto | TaskWithSubtasks> {
+  ): Promise<ITask> {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
       include: { subtasks: includeSubtasks },
@@ -79,10 +73,10 @@ export class TasksService {
     return subtaskIds;
   }
 
-  private async getTaskWithSubtasks(taskId: string): Promise<TaskWithSubtasks> {
+  private async getTaskWithSubtasks(taskId: string): Promise<ITask> {
     const task = await this.getTaskById(taskId, true);
     const subtasksWithChildren = await Promise.all(
-      (task as TaskWithSubtasks).subtasks.map(async (subtask: TaskDto) => {
+      task.subtasks.map(async (subtask: ITask) => {
         return await this.getTaskWithSubtasks(subtask.id);
       }),
     );
@@ -162,7 +156,7 @@ export class TasksService {
     );
   }
 
-  async getTasks(payload: GetTasksPayloadDto): Promise<ManyTasksDto> {
+  async getTasks(payload: GetTasksPayloadDto): Promise<ITasks> {
     return await this.requestHandlerService.handleRequest(
       async () => {
         const { page, limit } = payload;
@@ -197,7 +191,7 @@ export class TasksService {
     );
   }
 
-  async createTask(payload: CreateTaskPayload): Promise<TaskDto> {
+  async createTask(payload: ICreateTaskPayload): Promise<ITask> {
     return await this.requestHandlerService.handleRequest(
       async () => {
         const { userId, parentTaskId } = payload;
@@ -226,7 +220,7 @@ export class TasksService {
     );
   }
 
-  async editTask(payload: TaskDto): Promise<TaskDto> {
+  async editTask(payload: TaskDto): Promise<ITask> {
     return await this.requestHandlerService.handleRequest(
       async () => {
         const { id, parentTaskId } = payload;
@@ -261,7 +255,7 @@ export class TasksService {
     );
   }
 
-  async toggleStatus({ taskId }: TaskIdDto): Promise<TaskDto> {
+  async toggleStatus(taskId: string): Promise<ITask> {
     return await this.requestHandlerService.handleRequest(
       async () => {
         const task = await this.prisma.task.findUniqueOrThrow({
@@ -279,7 +273,7 @@ export class TasksService {
     );
   }
 
-  async deleteTask({ taskId }: TaskIdDto): Promise<TaskDto> {
+  async deleteTask(taskId: string): Promise<ITask> {
     return await this.requestHandlerService.handleRequest(
       async () =>
         this.prisma.task.delete({

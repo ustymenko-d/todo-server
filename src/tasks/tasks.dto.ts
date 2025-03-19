@@ -6,7 +6,7 @@ import {
   IsUUID,
   MinLength,
 } from 'class-validator';
-import { PaginationDto, GetResponseDto } from 'src/common/common.dto';
+import { PaginationDto } from 'src/common/common.dto';
 
 export class TaskBaseDto {
   @IsString()
@@ -33,37 +33,16 @@ export class TaskBaseDto {
   folderId?: string | null;
 }
 
-export class CreateTaskPayload extends TaskBaseDto {
-  @IsString()
-  @IsUUID()
-  userId: string;
-}
-
-export class TaskDto extends CreateTaskPayload {
+export class TaskDto extends TaskBaseDto {
   @IsString()
   @IsNotEmpty({ message: 'The task ID is required.' })
   id: string;
 
+  @IsUUID()
+  userId: string;
+
   @IsOptional()
   createdAt?: Date;
-}
-
-export interface TaskWithSubtasks extends TaskDto {
-  subtasks: TaskDto[];
-}
-
-export class TaskResponseDto {
-  success: boolean;
-  task: TaskDto;
-}
-
-export class ManyTasksDto extends GetResponseDto {
-  tasks: TaskDto[] = [];
-}
-
-export class GetTasksResponseDto {
-  success: boolean;
-  tasksData: ManyTasksDto;
 }
 
 export class GetTasksRequestDto extends PaginationDto {
@@ -89,13 +68,11 @@ export class GetTasksRequestDto extends PaginationDto {
 }
 
 export class GetTasksPayloadDto extends GetTasksRequestDto {
-  @IsString()
   @IsUUID()
   userId: string;
 }
 
 export class TaskIdDto {
-  @IsString()
   @IsUUID()
   taskId: string;
 }

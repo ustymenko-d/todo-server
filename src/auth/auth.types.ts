@@ -1,19 +1,14 @@
-export interface AuthBase {
-  email: string;
-  password: string;
-}
-
-export interface TokenPair {
+export interface ITokenPair {
   accessToken: string;
   refreshToken: string;
 }
 
-export interface User {
+export interface IUser {
   id: string;
-  username: string;
   email: string;
+  username: string;
   tokenVersion: number;
+  createdAt: Date;
   isVerified: boolean;
   verificationToken: string | null;
-  createdAt: Date;
 }

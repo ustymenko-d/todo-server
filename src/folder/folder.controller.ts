@@ -14,14 +14,13 @@ import { AuthGuard } from '@nestjs/passport';
 import { FolderOwnerGuard } from './folder-owner.guard';
 import { FolderService } from './folder.service';
 import { RequestHandlerService } from 'src/common/request-handler.service';
-import { JwtUser } from 'src/common/common.dto';
+import { FolderIdDto, FolderNameDto } from './folder.dto';
 import {
-  FolderIdDto,
-  FolderNameDto,
-  FolderResponseDto,
-  GetFolderRequestDto,
-  GetFolderResponseDto,
-} from './folder.dto';
+  IFolderResponse,
+  IGetFolderRequest,
+  IGetFolderResponse,
+} from './folder.types';
+import { IJwtUser } from 'src/common/common.types';
 
 @Controller('folder')
 export class FolderController {
@@ -34,9 +33,9 @@ export class FolderController {
   @Post()
   async create(
     @Req()
-    req: { user: JwtUser },
+    req: { user: IJwtUser },
     @Body() body: FolderNameDto,
-  ): Promise<FolderResponseDto> {
+  ): Promise<IFolderResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const payload = {
         name: body.name,
@@ -55,9 +54,9 @@ export class FolderController {
   @Get()
   async get(
     @Req()
-    req: { user: JwtUser },
-    @Query() query: GetFolderRequestDto,
-  ): Promise<GetFolderResponseDto> {
+    req: { user: IJwtUser },
+    @Query() query: IGetFolderRequest,
+  ): Promise<IGetFolderResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { page, limit, name } = query;
       const payload = {
@@ -75,12 +74,12 @@ export class FolderController {
   async rename(
     @Param() { folderId }: FolderIdDto,
     @Body() { name }: FolderNameDto,
-  ): Promise<FolderResponseDto> {
+  ): Promise<IFolderResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const renamedFolder = await this.folderService.renameFolder({
+      const renamedFolder = await this.folderService.renameFolder(
         folderId,
         name,
-      });
+      );
       return {
         success: true,
         message: 'Folder rename successfully',
@@ -91,9 +90,9 @@ export class FolderController {
 
   @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
   @Delete(':folderId')
-  async delete(@Param() { folderId }: FolderIdDto): Promise<FolderResponseDto> {
+  async delete(@Param() { folderId }: FolderIdDto): Promise<IFolderResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const deletedFolder = await this.folderService.deleteFolder({ folderId });
+      const deletedFolder = await this.folderService.deleteFolder(folderId);
       return {
         success: true,
         message: 'Folder deleted successfully',

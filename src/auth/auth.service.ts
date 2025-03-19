@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { AuthBase, TokenPair, User } from './auth.types';
+import { ITokenPair, IUser } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
@@ -23,7 +23,7 @@ export class AuthService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
-  private async getUserById(userId: string): Promise<User> {
+  private async getUserById(userId: string): Promise<IUser> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found');
     return user;
@@ -33,7 +33,7 @@ export class AuthService {
     email: string,
     hashedPassword: string,
     hashedVerificationToken: string,
-  ): Promise<User> {
+  ): Promise<IUser> {
     try {
       return await this.prisma.user.create({
         data: {
@@ -55,7 +55,7 @@ export class AuthService {
     }
   }
 
-  private async incrementTokenVersion(user: User): Promise<User> {
+  private async incrementTokenVersion(user: IUser): Promise<IUser> {
     const { id, tokenVersion } = user;
 
     await this.prisma.user.update({
@@ -66,19 +66,18 @@ export class AuthService {
     return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  private async revokeTokensAndUpdateUser(userId: string): Promise<User> {
+  private async revokeTokensAndUpdateUser(userId: string): Promise<IUser> {
     await this.tokenService.revokePreviousTokens(userId);
     const user = await this.getUserById(userId);
     return this.incrementTokenVersion(user);
   }
 
-  async signup({ email, password }: AuthBase): Promise<TokenPair> {
+  async signup(email: string, password: string): Promise<ITokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const verificationToken = uuidv4();
-        const hashedPassword = await this.passwordService.hashPassword({
-          password,
-        });
+        const hashedPassword =
+          await this.passwordService.hashPassword(password);
         const user = await this.createUser(
           email,
           hashedPassword,
@@ -89,10 +88,7 @@ export class AuthService {
         );
         const accessToken = this.tokenService.createAccessToken(user);
 
-        await this.mailService.sendVerificationEmail({
-          email,
-          verificationToken,
-        });
+        await this.mailService.sendVerificationEmail(email, verificationToken);
 
         return { accessToken, refreshToken };
       },
@@ -120,7 +116,7 @@ export class AuthService {
     );
   }
 
-  async login({ email, password }: AuthBase): Promise<TokenPair> {
+  async login(email: string, password: string): Promise<ITokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -173,20 +169,14 @@ export class AuthService {
         const user = await this.prisma.user.findUnique({ where: { email } });
         if (!user) throw new UnauthorizedException('User not found');
         const resetToken = this.tokenService.createPasswordResetToken(user);
-        await this.mailService.sendPasswordResetEmail({ email, resetToken });
+        await this.mailService.sendPasswordResetEmail(email, resetToken);
       },
       'Password reset email send failed',
       true,
     );
   }
 
-  async resetPassword({
-    resetToken,
-    password,
-  }: {
-    resetToken: string;
-    password: string;
-  }): Promise<void> {
+  async resetPassword(resetToken: string, password: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const { userId, tokenVersion } =
@@ -198,9 +188,8 @@ export class AuthService {
         if (!user)
           throw new UnauthorizedException('User not found or invalid token');
 
-        const hashedPassword = await this.passwordService.hashPassword({
-          password,
-        });
+        const hashedPassword =
+          await this.passwordService.hashPassword(password);
 
         await this.prisma.user.update({
           where: { id: user.id },
@@ -212,7 +201,10 @@ export class AuthService {
     );
   }
 
-  async refreshToken(userId: string, refreshToken: string): Promise<TokenPair> {
+  async refreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<ITokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
         await this.tokenService.validateRefreshToken(userId, refreshToken);

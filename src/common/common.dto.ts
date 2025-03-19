@@ -1,35 +1,24 @@
 import { IsInt, IsPositive, Min } from 'class-validator';
 import { applyDecorators } from '@nestjs/common';
 
-export class ResponseStatusDto {
-  success: boolean;
-  message: string;
-}
-
-const paginationRules = [
+const paginationRulesDto = [
   IsInt(),
   IsPositive({ message: 'Must be a positive number greater than zero.' }),
   Min(1, { message: 'Must be at least 1.' }),
 ];
 
 export class PaginationDto {
-  @applyDecorators(...paginationRules)
+  @applyDecorators(...paginationRulesDto)
   page: number;
 
-  @applyDecorators(...paginationRules)
+  @applyDecorators(...paginationRulesDto)
   limit: number;
 }
 
 export class GetResponseDto extends PaginationDto {
-  @applyDecorators(...paginationRules)
+  @applyDecorators(...paginationRulesDto)
   pages: number;
 
   @IsInt()
   total: number;
 }
-
-export type JwtUser = {
-  userId: string;
-  email: string;
-  tokenVersion: number;
-};
