@@ -7,13 +7,11 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RequestHandlerService } from 'src/common/request-handler.service';
 import {
-  FolderDto,
-  FolderIdDto,
-  FolderPayloadDto,
-  GetFolderPayloadDto,
-  GetFolderResponseDto,
-  RenameFolderDto,
-} from './folder.dto';
+  ICreateFolderPayload,
+  IFolder,
+  IGetFolderPayload,
+  IGetFolderResponse,
+} from './folder.types';
 
 @Injectable()
 export class FolderService {
@@ -22,7 +20,7 @@ export class FolderService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
-  async createFolder(payload: FolderPayloadDto): Promise<FolderDto> {
+  async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const { userId } = payload;
@@ -50,9 +48,7 @@ export class FolderService {
     );
   }
 
-  async getFolders(
-    payload: GetFolderPayloadDto,
-  ): Promise<GetFolderResponseDto> {
+  async getFolders(payload: IGetFolderPayload): Promise<IGetFolderResponse> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const { page, limit, userId, name } = payload;
@@ -91,7 +87,7 @@ export class FolderService {
     );
   }
 
-  async renameFolder({ folderId, name }: RenameFolderDto): Promise<FolderDto> {
+  async renameFolder(folderId: string, name: string): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const folder = await this.prisma.folder.findUnique({
@@ -112,7 +108,7 @@ export class FolderService {
     );
   }
 
-  async deleteFolder({ folderId }: FolderIdDto): Promise<FolderDto> {
+  async deleteFolder(folderId: string): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
       async () =>
         await this.prisma.folder.delete({

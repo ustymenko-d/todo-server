@@ -15,13 +15,12 @@ import { TaskOwnerGuard } from './task-owner.guard';
 import { TasksService } from './tasks.service';
 import {
   GetTasksRequestDto,
-  GetTasksResponseDto,
   TaskBaseDto,
   TaskDto,
   TaskIdDto,
-  TaskResponseDto,
 } from './tasks.dto';
-import { JwtUser } from 'src/common/common.dto';
+import { IJwtUser } from 'src/common/common.types';
+import { IGetTasksResponse, ITaskResponse } from './task.types';
 
 @Controller('tasks')
 export class TasksController {
@@ -33,9 +32,9 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'))
   @Post('get')
   async get(
-    @Req() req: { user: JwtUser },
+    @Req() req: { user: IJwtUser },
     @Body() body: GetTasksRequestDto,
-  ): Promise<GetTasksResponseDto> {
+  ): Promise<IGetTasksResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
       const tasksData = await this.tasksService.getTasks({
@@ -49,9 +48,9 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'))
   @Post('create')
   async create(
-    @Req() req: { user: JwtUser },
+    @Req() req: { user: IJwtUser },
     @Body() body: TaskBaseDto,
-  ): Promise<TaskResponseDto> {
+  ): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
       const createdTask = await this.tasksService.createTask({
@@ -64,7 +63,7 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Put()
-  async edit(@Body() body: TaskDto): Promise<TaskResponseDto> {
+  async edit(@Body() body: TaskDto): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const updatedTask = await this.tasksService.editTask(body);
       return { success: true, task: updatedTask };
@@ -73,18 +72,18 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Patch(':taskId')
-  async toggleStatus(@Param() { taskId }: TaskIdDto): Promise<TaskResponseDto> {
+  async toggleStatus(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const updatedTask = await this.tasksService.toggleStatus({ taskId });
+      const updatedTask = await this.tasksService.toggleStatus(taskId);
       return { success: true, task: updatedTask };
     }, `Error when change status of the task (${taskId})`);
   }
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
-  async delete(@Param() { taskId }: TaskIdDto): Promise<TaskResponseDto> {
+  async delete(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const deletedTask = await this.tasksService.deleteTask({ taskId });
+      const deletedTask = await this.tasksService.deleteTask(taskId);
       return { success: true, task: deletedTask };
     }, 'Error when deleting a task');
   }

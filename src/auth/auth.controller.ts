@@ -16,9 +16,9 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
 import { Request, Response } from 'express';
 import { CookieService } from '../common/cookie.service';
-import { JwtUser, ResponseStatusDto } from 'src/common/common.dto';
 import { RequestHandlerService } from 'src/common/request-handler.service';
 import { TokenService } from 'src/common/token.service';
+import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 
 @Controller('auth')
 export class AuthController {
@@ -33,13 +33,13 @@ export class AuthController {
   async signup(
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password, rememberMe } = body;
-      const { accessToken, refreshToken } = await this.authService.signup({
+      const { accessToken, refreshToken } = await this.authService.signup(
         email,
         password,
-      });
+      );
       this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
       return {
         success: true,
@@ -51,7 +51,7 @@ export class AuthController {
   @Get('verification')
   async verification(
     @Query('verificationToken') verificationToken: string,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.verifyEmail(verificationToken);
       return { success: true, message: 'Email verified successfully' };
@@ -62,13 +62,13 @@ export class AuthController {
   async login(
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password, rememberMe } = body;
-      const { accessToken, refreshToken } = await this.authService.login({
+      const { accessToken, refreshToken } = await this.authService.login(
         email,
         password,
-      });
+      );
       this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
       return { success: true, message: 'Login successful' };
     }, 'Login error');
@@ -78,9 +78,9 @@ export class AuthController {
   @Post('logout')
   async logout(
     @Req()
-    req: { user: JwtUser },
+    req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.logout(req.user.userId);
       this.clearAuthCookies(res);
@@ -92,9 +92,9 @@ export class AuthController {
   @Delete('delete')
   async deleteUser(
     @Req()
-    req: { user: JwtUser },
+    req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.deleteUser(req.user.userId);
       this.clearAuthCookies(res);
@@ -108,9 +108,9 @@ export class AuthController {
   @Post('forgot-password')
   async forgotPassword(
     @Body() { email }: EmailBaseDto,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.sendPasswordResetEmail({ email });
+      await this.authService.sendPasswordResetEmail(email);
       return {
         success: true,
         message: 'Password reset email sent successfully',
@@ -122,9 +122,9 @@ export class AuthController {
   async resetPassword(
     @Query('resetToken') resetToken: string,
     @Body() { password }: PasswordBaseDto,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.resetPassword({ resetToken, password });
+      await this.authService.resetPassword(resetToken, password);
       return { success: true, message: 'Password updated successfully' };
     }, 'Reset password error');
   }
@@ -134,7 +134,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Query('rememberMe') rememberMe?: string,
-  ): Promise<ResponseStatusDto> {
+  ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       const { access_token: accessToken, refresh_token: refreshToken } =
         req.cookies;
@@ -144,7 +144,7 @@ export class AuthController {
 
       const userId = this.tokenService.extractUserIdFromToken(accessToken);
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.authService.refreshToken({ userId, refreshToken });
+        await this.authService.refreshToken(userId, refreshToken);
 
       this.setAuthCookies(
         res,
