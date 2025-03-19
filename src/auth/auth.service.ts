@@ -6,13 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  AuthBaseDto,
-  EmailBaseDto,
-  RefreshTokenPayloadDto,
-  TokenPair,
-  UserDto,
-} from './auth.dto';
+import { AuthBase, TokenPair, User } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
@@ -29,7 +23,7 @@ export class AuthService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
-  private async getUserById(userId: string): Promise<UserDto> {
+  private async getUserById(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found');
     return user;
@@ -39,7 +33,7 @@ export class AuthService {
     email: string,
     hashedPassword: string,
     hashedVerificationToken: string,
-  ): Promise<UserDto> {
+  ): Promise<User> {
     try {
       return await this.prisma.user.create({
         data: {
@@ -61,7 +55,7 @@ export class AuthService {
     }
   }
 
-  private async incrementTokenVersion(user: UserDto): Promise<UserDto> {
+  private async incrementTokenVersion(user: User): Promise<User> {
     const { id, tokenVersion } = user;
 
     await this.prisma.user.update({
@@ -72,13 +66,13 @@ export class AuthService {
     return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  private async revokeTokensAndUpdateUser(userId: string): Promise<UserDto> {
+  private async revokeTokensAndUpdateUser(userId: string): Promise<User> {
     await this.tokenService.revokePreviousTokens(userId);
     const user = await this.getUserById(userId);
     return this.incrementTokenVersion(user);
   }
 
-  async signup({ email, password }: AuthBaseDto): Promise<TokenPair> {
+  async signup({ email, password }: AuthBase): Promise<TokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const verificationToken = uuidv4();
@@ -126,7 +120,7 @@ export class AuthService {
     );
   }
 
-  async login({ email, password }: AuthBaseDto): Promise<TokenPair> {
+  async login({ email, password }: AuthBase): Promise<TokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -173,7 +167,7 @@ export class AuthService {
     );
   }
 
-  async sendPasswordResetEmail({ email }: EmailBaseDto): Promise<void> {
+  async sendPasswordResetEmail(email: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -218,13 +212,10 @@ export class AuthService {
     );
   }
 
-  async refreshToken({
-    userId,
-    refreshToken,
-  }: RefreshTokenPayloadDto): Promise<TokenPair> {
+  async refreshToken(userId: string, refreshToken: string): Promise<TokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        await this.tokenService.validateRefreshToken({ userId, refreshToken });
+        await this.tokenService.validateRefreshToken(userId, refreshToken);
         await this.tokenService.revokePreviousTokens(userId);
 
         const newRefreshToken =

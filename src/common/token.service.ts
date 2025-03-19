@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import { RefreshTokenPayloadDto, UserDto } from 'src/auth/auth.dto';
+import { User } from 'src/auth/auth.types';
 
 @Injectable()
 export class TokenService {
@@ -19,7 +19,7 @@ export class TokenService {
     throw error;
   }
 
-  createAccessToken(user: UserDto): string {
+  createAccessToken(user: User): string {
     try {
       const payload = {
         email: user.email,
@@ -53,10 +53,10 @@ export class TokenService {
     }
   }
 
-  async validateRefreshToken({
-    userId,
-    refreshToken,
-  }: RefreshTokenPayloadDto): Promise<void> {
+  async validateRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<void> {
     const storedRefreshToken = await this.prisma.refreshToken.findFirst({
       where: { userId, revoked: false, expiresAt: { gt: new Date() } },
     });
@@ -84,7 +84,7 @@ export class TokenService {
     }
   }
 
-  createPasswordResetToken(user: UserDto): string {
+  createPasswordResetToken(user: User): string {
     try {
       return this.jwtService.sign(
         { userId: user.id, tokenVersion: user.tokenVersion },

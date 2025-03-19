@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
+import { AuthDto, EmailBase, PasswordBase } from './auth.dto';
 import { Request, Response } from 'express';
 import { CookieService } from '../common/cookie.service';
 import { JwtUser, ResponseStatusDto } from 'src/common/common.dto';
@@ -107,10 +107,10 @@ export class AuthController {
 
   @Post('forgot-password')
   async forgotPassword(
-    @Body() { email }: EmailBaseDto,
+    @Body() { email }: EmailBase,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.sendPasswordResetEmail({ email });
+      await this.authService.sendPasswordResetEmail(email);
       return {
         success: true,
         message: 'Password reset email sent successfully',
@@ -121,7 +121,7 @@ export class AuthController {
   @Patch('reset-password')
   async resetPassword(
     @Query('resetToken') resetToken: string,
-    @Body() { password }: PasswordBaseDto,
+    @Body() { password }: PasswordBase,
   ): Promise<ResponseStatusDto> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.resetPassword({ resetToken, password });
@@ -144,7 +144,7 @@ export class AuthController {
 
       const userId = this.tokenService.extractUserIdFromToken(accessToken);
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.authService.refreshToken({ userId, refreshToken });
+        await this.authService.refreshToken(userId, refreshToken);
 
       this.setAuthCookies(
         res,
