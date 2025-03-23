@@ -19,6 +19,7 @@ import { CookieService } from '../common/cookie.service';
 import { RequestHandlerService } from 'src/common/request-handler.service';
 import { TokenService } from 'src/common/token.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
+import { IAuthResponse } from './auth.types';
 
 @Controller('auth')
 export class AuthController {
@@ -33,17 +34,16 @@ export class AuthController {
   async signup(
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<IResponseStatus> {
+  ): Promise<IAuthResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password, rememberMe } = body;
-      const { accessToken, refreshToken } = await this.authService.signup(
-        email,
-        password,
-      );
+      const { accessToken, refreshToken, userInfo } =
+        await this.authService.signup(email, password);
       this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
       return {
         success: true,
         message: 'Registration successful. Please verify your email.',
+        userInfo,
       };
     }, 'Sign up error');
   }
@@ -62,15 +62,13 @@ export class AuthController {
   async login(
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<IResponseStatus> {
+  ): Promise<IAuthResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { email, password, rememberMe } = body;
-      const { accessToken, refreshToken } = await this.authService.login(
-        email,
-        password,
-      );
+      const { accessToken, refreshToken, userInfo } =
+        await this.authService.login(email, password);
       this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
-      return { success: true, message: 'Login successful' };
+      return { success: true, message: 'Login successful', userInfo };
     }, 'Login error');
   }
 

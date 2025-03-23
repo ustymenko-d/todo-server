@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { ITokenPair, IUser } from './auth.types';
+import { IAuthData, ITokenPair, IUser, IUserInfo } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
@@ -72,7 +72,17 @@ export class AuthService {
     return this.incrementTokenVersion(user);
   }
 
-  async signup(email: string, password: string): Promise<ITokenPair> {
+  private createUserData({
+    id,
+    email,
+    username,
+    createdAt,
+    isVerified,
+  }: IUser): IUserInfo {
+    return { id, email, username, createdAt, isVerified };
+  }
+
+  async signup(email: string, password: string): Promise<IAuthData> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const verificationToken = uuidv4();
@@ -87,10 +97,9 @@ export class AuthService {
           user.id,
         );
         const accessToken = this.tokenService.createAccessToken(user);
-
+        const userInfo = this.createUserData(user);
         await this.mailService.sendVerificationEmail(email, verificationToken);
-
-        return { accessToken, refreshToken };
+        return { accessToken, refreshToken, userInfo };
       },
       'Signup failed',
       true,
@@ -116,7 +125,7 @@ export class AuthService {
     );
   }
 
-  async login(email: string, password: string): Promise<ITokenPair> {
+  async login(email: string, password: string): Promise<IAuthData> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const user = await this.prisma.user.findUnique({ where: { email } });
@@ -134,8 +143,9 @@ export class AuthService {
           updatedUser.id,
         );
         const accessToken = this.tokenService.createAccessToken(updatedUser);
+        const userInfo = this.createUserData(updatedUser);
 
-        return { accessToken, refreshToken };
+        return { accessToken, refreshToken, userInfo };
       },
       'Login failed',
       true,
