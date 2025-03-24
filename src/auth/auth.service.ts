@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import { IAuthData, ITokenPair, IUser, IUserInfo } from './auth.types';
+import {
+  IAuthData,
+  ITokenPair,
+  IUser,
+  IUserInfo,
+  TFindUserByQuery,
+} from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/common/mail.service';
 import { PasswordService } from 'src/common/password.service';
@@ -23,8 +29,8 @@ export class AuthService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
-  private async getUserById(userId: string): Promise<IUser> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  private async findUserBy(query: TFindUserByQuery): Promise<IUser> {
+    const user = await this.prisma.user.findUnique({ where: query });
     if (!user) throw new UnauthorizedException('User not found');
     return user;
   }
@@ -55,24 +61,19 @@ export class AuthService {
     }
   }
 
-  private async incrementTokenVersion(user: IUser): Promise<IUser> {
-    const { id, tokenVersion } = user;
-
-    await this.prisma.user.update({
+  private async incrementTokenVersion({ id }: IUser): Promise<IUser> {
+    return await this.prisma.user.update({
       where: { id },
       data: { tokenVersion: { increment: 1 } },
     });
-
-    return { ...user, tokenVersion: tokenVersion + 1 };
   }
 
-  private async revokeTokensAndUpdateUser(userId: string): Promise<IUser> {
-    await this.tokenService.revokePreviousTokens(userId);
-    const user = await this.getUserById(userId);
-    return this.incrementTokenVersion(user);
+  private async revokeTokensAndUpdateUser(id: string): Promise<IUser> {
+    await this.tokenService.revokePreviousTokens(id);
+    return this.incrementTokenVersion(await this.findUserBy({ id }));
   }
 
-  private createUserData({
+  private createUserInfo({
     id,
     email,
     username,
@@ -93,30 +94,24 @@ export class AuthService {
           hashedPassword,
           verificationToken,
         );
-        const refreshToken = await this.tokenService.createRefreshToken(
-          user.id,
-        );
-        const accessToken = this.tokenService.createAccessToken(user);
-        const userInfo = this.createUserData(user);
         await this.mailService.sendVerificationEmail(email, verificationToken);
-        return { accessToken, refreshToken, userInfo };
+        return {
+          accessToken: this.tokenService.createAccessToken(user),
+          refreshToken: await this.tokenService.createRefreshToken(user.id),
+          userInfo: this.createUserInfo(user),
+        };
       },
       'Signup failed',
       true,
     );
   }
 
-  async verifyEmail(token: string): Promise<void> {
+  async verifyEmail(verificationToken: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        const user = await this.prisma.user.findUnique({
-          where: { verificationToken: token },
-        });
-
-        if (!user) throw new UnauthorizedException('User not found');
-
+        const { id } = await this.findUserBy({ verificationToken });
         await this.prisma.user.update({
-          where: { id: user.id },
+          where: { id },
           data: { isVerified: true, verificationToken: null },
         });
       },
@@ -128,34 +123,45 @@ export class AuthService {
   async login(email: string, password: string): Promise<IAuthData> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        const user = await this.prisma.user.findUnique({ where: { email } });
-        if (
-          !user ||
-          !(await this.passwordService.comparePasswords(
-            password,
-            user.password,
-          ))
-        )
+        const user = await this.findUserBy({ email });
+        const passwordVerified = await this.passwordService.comparePasswords(
+          password,
+          user.password,
+        );
+
+        if (!passwordVerified)
           throw new UnauthorizedException('Invalid credentials');
 
         const updatedUser = await this.revokeTokensAndUpdateUser(user.id);
-        const refreshToken = await this.tokenService.createRefreshToken(
-          updatedUser.id,
-        );
-        const accessToken = this.tokenService.createAccessToken(updatedUser);
-        const userInfo = this.createUserData(updatedUser);
 
-        return { accessToken, refreshToken, userInfo };
+        return {
+          accessToken: this.tokenService.createAccessToken(updatedUser),
+          refreshToken: await this.tokenService.createRefreshToken(
+            updatedUser.id,
+          ),
+          userInfo: this.createUserInfo(updatedUser),
+        };
       },
       'Login failed',
       true,
     );
   }
 
-  async logout(userId: string): Promise<void> {
+  async getAccountInfo(id: string): Promise<IUserInfo> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        await this.revokeTokensAndUpdateUser(userId);
+        const user = await this.findUserBy({ id });
+        return this.createUserInfo(user);
+      },
+      'Get user info failed',
+      true,
+    );
+  }
+
+  async logout(id: string): Promise<void> {
+    return this.requestHandlerService.handleRequest(
+      async () => {
+        await this.revokeTokensAndUpdateUser(id);
       },
       'Logout failed',
       true,
@@ -165,8 +171,8 @@ export class AuthService {
   async deleteUser(userId: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        const user = await this.getUserById(userId);
-        await this.prisma.user.delete({ where: { id: user.id } });
+        const { id } = await this.findUserBy({ id: userId });
+        await this.prisma.user.delete({ where: { id } });
       },
       'Delete user failed',
       true,
@@ -176,8 +182,7 @@ export class AuthService {
   async sendPasswordResetEmail(email: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        const user = await this.prisma.user.findUnique({ where: { email } });
-        if (!user) throw new UnauthorizedException('User not found');
+        const user = await this.findUserBy({ email });
         const resetToken = this.tokenService.createPasswordResetToken(user);
         await this.mailService.sendPasswordResetEmail(email, resetToken);
       },
@@ -191,18 +196,12 @@ export class AuthService {
       async () => {
         const { userId, tokenVersion } =
           this.tokenService.verifyPasswordResetToken(resetToken);
-        const user = await this.prisma.user.findUnique({
-          where: { id: userId, tokenVersion },
-        });
-
-        if (!user)
-          throw new UnauthorizedException('User not found or invalid token');
-
+        const { id } = await this.findUserBy({ id: userId, tokenVersion });
         const hashedPassword =
           await this.passwordService.hashPassword(password);
 
         await this.prisma.user.update({
-          where: { id: user.id },
+          where: { id },
           data: { password: hashedPassword, tokenVersion: { increment: 1 } },
         });
       },
@@ -211,18 +210,14 @@ export class AuthService {
     );
   }
 
-  async refreshToken(
-    userId: string,
-    refreshToken: string,
-  ): Promise<ITokenPair> {
+  async refreshToken(id: string, refreshToken: string): Promise<ITokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        await this.tokenService.validateRefreshToken(userId, refreshToken);
-        await this.tokenService.revokePreviousTokens(userId);
+        await this.tokenService.validateRefreshToken(id, refreshToken);
+        await this.tokenService.revokePreviousTokens(id);
 
-        const newRefreshToken =
-          await this.tokenService.createRefreshToken(userId);
-        const user = await this.getUserById(userId);
+        const newRefreshToken = await this.tokenService.createRefreshToken(id);
+        const user = await this.findUserBy({ id });
 
         const updatedUser = await this.incrementTokenVersion(user);
         const newAccessToken = this.tokenService.createAccessToken(updatedUser);
