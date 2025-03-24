@@ -20,22 +20,6 @@ export class FolderService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
-  private buildFolderWhereInput(
-    payload: IGetFolderPayload,
-  ): Prisma.FolderWhereInput {
-    const { userId, name } = payload;
-    return Object.assign(
-      {},
-      { userId },
-      name && {
-        name: {
-          contains: name,
-          mode: Prisma.QueryMode.insensitive,
-        },
-      },
-    );
-  }
-
   async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
       async () => {
@@ -118,6 +102,22 @@ export class FolderService {
       async () => await this.prisma.folder.delete({ where: { id } }),
       'Error while deleting folder',
       true,
+    );
+  }
+
+  private buildFolderWhereInput(
+    payload: IGetFolderPayload,
+  ): Prisma.FolderWhereInput {
+    const { userId, name } = payload;
+    return Object.assign(
+      {},
+      { userId },
+      name && {
+        name: {
+          contains: name,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      },
     );
   }
 }

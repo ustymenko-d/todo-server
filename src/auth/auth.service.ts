@@ -29,60 +29,6 @@ export class AuthService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
-  private async findUserBy(query: TFindUserByQuery): Promise<IUser> {
-    const user = await this.prisma.user.findUnique({ where: query });
-    if (!user) throw new UnauthorizedException('User not found');
-    return user;
-  }
-
-  private async createUser(
-    email: string,
-    hashedPassword: string,
-    hashedVerificationToken: string,
-  ): Promise<IUser> {
-    try {
-      return await this.prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          username: email.split('@')[0],
-          tokenVersion: 1,
-          verificationToken: hashedVerificationToken,
-        },
-      });
-    } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException('User with this email already exists');
-      }
-      throw new InternalServerErrorException('Creating user failed');
-    }
-  }
-
-  private async incrementTokenVersion({ id }: IUser): Promise<IUser> {
-    return await this.prisma.user.update({
-      where: { id },
-      data: { tokenVersion: { increment: 1 } },
-    });
-  }
-
-  private async revokeTokensAndUpdateUser(id: string): Promise<IUser> {
-    await this.tokenService.revokePreviousTokens(id);
-    return this.incrementTokenVersion(await this.findUserBy({ id }));
-  }
-
-  private createUserInfo({
-    id,
-    email,
-    username,
-    createdAt,
-    isVerified,
-  }: IUser): IUserInfo {
-    return { id, email, username, createdAt, isVerified };
-  }
-
   async signup(email: string, password: string): Promise<IAuthData> {
     return this.requestHandlerService.handleRequest(
       async () => {
@@ -227,5 +173,59 @@ export class AuthService {
       'Refresh token failed',
       true,
     );
+  }
+
+  private async findUserBy(query: TFindUserByQuery): Promise<IUser> {
+    const user = await this.prisma.user.findUnique({ where: query });
+    if (!user) throw new UnauthorizedException('User not found');
+    return user;
+  }
+
+  private async createUser(
+    email: string,
+    hashedPassword: string,
+    hashedVerificationToken: string,
+  ): Promise<IUser> {
+    try {
+      return await this.prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          username: email.split('@')[0],
+          tokenVersion: 1,
+          verificationToken: hashedVerificationToken,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('User with this email already exists');
+      }
+      throw new InternalServerErrorException('Creating user failed');
+    }
+  }
+
+  private async incrementTokenVersion({ id }: IUser): Promise<IUser> {
+    return await this.prisma.user.update({
+      where: { id },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  }
+
+  private async revokeTokensAndUpdateUser(id: string): Promise<IUser> {
+    await this.tokenService.revokePreviousTokens(id);
+    return this.incrementTokenVersion(await this.findUserBy({ id }));
+  }
+
+  private createUserInfo({
+    id,
+    email,
+    username,
+    createdAt,
+    isVerified,
+  }: IUser): IUserInfo {
+    return { id, email, username, createdAt, isVerified };
   }
 }
