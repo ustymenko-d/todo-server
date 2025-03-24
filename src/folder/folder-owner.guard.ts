@@ -18,13 +18,7 @@ export class FolderOwnerGuard implements CanActivate {
     if (!userId || !folderId)
       throw new BadRequestException('Invalid request parameters');
 
-    const folder = await this.findFolderById(folderId);
-
-    if (folder.userId !== userId)
-      throw new ForbiddenException(
-        `User with ID (${userId}) doesn't own this folder`,
-      );
-
+    await this.verifyFolderOwnership(userId, folderId);
     return true;
   }
 
@@ -39,14 +33,26 @@ export class FolderOwnerGuard implements CanActivate {
     };
   }
 
-  private async findFolderById(folderId: string) {
+  private async verifyFolderOwnership(
+    userId: string,
+    folderId: string,
+  ): Promise<void> {
+    const ownerId = await this.findFolderOwner(folderId);
+
+    if (ownerId !== userId)
+      throw new ForbiddenException(
+        `User with ID (${userId}) doesn't own this folder`,
+      );
+  }
+
+  private async findFolderOwner(id: string): Promise<string> {
     const folder = await this.prisma.folder.findUnique({
-      where: { id: folderId },
+      where: { id },
       select: { userId: true },
     });
 
     if (!folder) throw new NotFoundException('Folder not found');
 
-    return folder;
+    return folder.userId;
   }
 }

@@ -20,6 +20,22 @@ export class FolderService {
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
+  private buildFolderWhereInput(
+    payload: IGetFolderPayload,
+  ): Prisma.FolderWhereInput {
+    const { userId, name } = payload;
+    return Object.assign(
+      {},
+      { userId },
+      name && {
+        name: {
+          contains: name,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      },
+    );
+  }
+
   async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
       async () => {
@@ -39,9 +55,7 @@ export class FolderService {
             'Unverified users cannot create more than three folders',
           );
 
-        return await this.prisma.folder.create({
-          data: payload,
-        });
+        return await this.prisma.folder.create({ data: payload });
       },
       'Error while creating folder',
       true,
@@ -51,24 +65,15 @@ export class FolderService {
   async getFolders(payload: IGetFolderPayload): Promise<IGetFolderResponse> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        const { page, limit, userId, name } = payload;
-        const skip = (+page - 1) * +limit;
-        const where: Prisma.FolderWhereInput = Object.assign(
-          {},
-          { userId },
-          name && {
-            name: {
-              contains: name,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-        );
+        const { page, limit } = payload;
+        const skip = (page - 1) * limit;
+        const where = this.buildFolderWhereInput(payload);
 
         const [folders, total] = await this.prisma.$transaction([
           this.prisma.folder.findMany({
             where,
             skip,
-            take: +limit,
+            take: limit,
             orderBy: { name: 'asc' },
           }),
           this.prisma.folder.count({ where }),
@@ -87,19 +92,19 @@ export class FolderService {
     );
   }
 
-  async renameFolder(folderId: string, name: string): Promise<IFolder> {
+  async renameFolder(id: string, name: string): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const folder = await this.prisma.folder.findUnique({
-          where: { id: folderId },
+          where: { id },
           select: { name: true },
         });
 
         if (!folder)
-          throw new NotFoundException(`Folder with id ${folderId} not found`);
+          throw new NotFoundException(`Folder with id ${id} not found`);
 
         return await this.prisma.folder.update({
-          where: { id: folderId },
+          where: { id },
           data: { name },
         });
       },
@@ -108,12 +113,9 @@ export class FolderService {
     );
   }
 
-  async deleteFolder(folderId: string): Promise<IFolder> {
+  async deleteFolder(id: string): Promise<IFolder> {
     return this.requestHandlerService.handleRequest(
-      async () =>
-        await this.prisma.folder.delete({
-          where: { id: folderId },
-        }),
+      async () => await this.prisma.folder.delete({ where: { id } }),
       'Error while deleting folder',
       true,
     );
