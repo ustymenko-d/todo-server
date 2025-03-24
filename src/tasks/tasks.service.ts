@@ -56,7 +56,7 @@ export class TasksService {
   async createTask(payload: ICreateTaskPayload): Promise<ITask> {
     return await this.requestHandlerService.handleRequest(
       async () => {
-        const { userId, parentTaskId } = payload;
+        const { userId, parentTaskId, folderId } = payload;
         await this.validateTaskCreation(userId);
 
         if (parentTaskId) {
@@ -68,6 +68,8 @@ export class TasksService {
             );
           await this.subtaskCountValidation(parentTaskId);
         }
+
+        if (folderId) await this.folderIdValidation(folderId, userId);
 
         return await this.prisma.task.create({
           data: {
@@ -85,7 +87,7 @@ export class TasksService {
   async editTask(payload: TaskDto): Promise<ITask> {
     return await this.requestHandlerService.handleRequest(
       async () => {
-        const { id, parentTaskId } = payload;
+        const { id, parentTaskId, folderId, userId } = payload;
 
         if (parentTaskId) {
           const allSubtaskIds = await this.getAllSubtaskIds(id);
@@ -104,6 +106,8 @@ export class TasksService {
               'Moving this task would exceed the maximum depth of 5',
             );
         }
+
+        if (folderId) await this.folderIdValidation(folderId, userId);
 
         return await this.prisma.task.update({
           where: { id },
@@ -274,5 +278,20 @@ export class TasksService {
         },
       },
     );
+  }
+
+  private async folderIdValidation(id: string, userId: string): Promise<void> {
+    const folder = await this.prisma.folder.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!folder)
+      throw new NotFoundException(`Folder with id (${id}) not found`);
+
+    if (folder.userId !== userId)
+      throw new ForbiddenException(
+        `User with ID (${userId}) doesn't own this folder`,
+      );
   }
 }
