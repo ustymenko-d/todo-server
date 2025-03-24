@@ -19,7 +19,7 @@ import { CookieService } from '../common/cookie.service';
 import { RequestHandlerService } from 'src/common/request-handler.service';
 import { TokenService } from 'src/common/token.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
-import { IAuthResponse } from './auth.types';
+import { IAuthResponse, IUserInfo } from './auth.types';
 
 @Controller('auth')
 export class AuthController {
@@ -70,6 +70,14 @@ export class AuthController {
       this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
       return { success: true, message: 'Login successful', userInfo };
     }, 'Login error');
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('account-info')
+  async getUserInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
+    return this.requestHandlerService.handleRequest(async () => {
+      return await this.authService.getAccountInfo(req.user.userId);
+    }, 'Get user info error');
   }
 
   @UseGuards(AuthGuard('jwt'))

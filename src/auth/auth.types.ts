@@ -14,6 +14,7 @@ export interface IUserInfo {
 }
 
 export interface IUser extends IUserInfo {
+  password: string;
   tokenVersion: number;
   verificationToken: string | null;
 }
@@ -25,3 +26,8 @@ export interface IAuthData extends ITokenPair {
 export interface IAuthResponse extends IResponseStatus {
   userInfo: IUserInfo;
 }
+
+export type TFindUserByQuery =
+  | { id: string; tokenVersion?: number }
+  | { email: string }
+  | { verificationToken: string };

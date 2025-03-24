@@ -41,11 +41,10 @@ export class FolderController {
         name: body.name,
         userId: req.user.userId,
       };
-      const createdFolder = await this.folderService.createFolder(payload);
       return {
         success: true,
         message: 'Folder create successfully',
-        folder: createdFolder,
+        folder: await this.folderService.createFolder(payload),
       };
     }, 'Eror while creating folder');
   }
@@ -61,8 +60,8 @@ export class FolderController {
       const { page, limit, name } = query;
       const payload = {
         name,
-        page: Number(page),
-        limit: Number(limit),
+        page: +page,
+        limit: +limit,
         userId: req.user.userId,
       };
       return await this.folderService.getFolders(payload);
@@ -76,14 +75,10 @@ export class FolderController {
     @Body() { name }: FolderNameDto,
   ): Promise<IFolderResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const renamedFolder = await this.folderService.renameFolder(
-        folderId,
-        name,
-      );
       return {
         success: true,
         message: 'Folder rename successfully',
-        folder: renamedFolder,
+        folder: await this.folderService.renameFolder(folderId, name),
       };
     }, 'Eror while renaminging folder');
   }
@@ -92,11 +87,10 @@ export class FolderController {
   @Delete(':folderId')
   async delete(@Param() { folderId }: FolderIdDto): Promise<IFolderResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const deletedFolder = await this.folderService.deleteFolder(folderId);
       return {
         success: true,
         message: 'Folder deleted successfully',
-        folder: deletedFolder,
+        folder: await this.folderService.deleteFolder(folderId),
       };
     }, 'Eror while deleting folder');
   }

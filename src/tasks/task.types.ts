@@ -19,7 +19,7 @@ export interface ITaskResponse {
   task: ITask;
 }
 
-export interface ITasks {
+export interface ITasksData {
   pages: number;
   total: number;
   tasks: ITask[];
@@ -27,5 +27,5 @@ export interface ITasks {
 
 export interface IGetTasksResponse {
   success: boolean;
-  tasksData: ITasks;
+  data: ITasksData;
 }

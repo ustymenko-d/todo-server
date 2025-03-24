@@ -37,11 +37,13 @@ export class TasksController {
   ): Promise<IGetTasksResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
-      const tasksData = await this.tasksService.getTasks({
-        ...body,
-        userId,
-      });
-      return { success: true, tasksData };
+      return {
+        success: true,
+        data: await this.tasksService.getTasks({
+          ...body,
+          userId,
+        }),
+      };
     }, 'Error while fetching tasks');
   }
 
@@ -53,11 +55,13 @@ export class TasksController {
   ): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
       const { userId } = req.user;
-      const createdTask = await this.tasksService.createTask({
-        ...body,
-        userId,
-      });
-      return { success: true, task: createdTask };
+      return {
+        success: true,
+        task: await this.tasksService.createTask({
+          ...body,
+          userId,
+        }),
+      };
     }, 'Error while creating a task');
   }
 
@@ -65,8 +69,7 @@ export class TasksController {
   @Put()
   async edit(@Body() body: TaskDto): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const updatedTask = await this.tasksService.editTask(body);
-      return { success: true, task: updatedTask };
+      return { success: true, task: await this.tasksService.editTask(body) };
     }, 'Error while editing a task');
   }
 
@@ -74,8 +77,10 @@ export class TasksController {
   @Patch(':taskId')
   async toggleStatus(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const updatedTask = await this.tasksService.toggleStatus(taskId);
-      return { success: true, task: updatedTask };
+      return {
+        success: true,
+        task: await this.tasksService.toggleStatus(taskId),
+      };
     }, `Error when change status of the task (${taskId})`);
   }
 
@@ -83,8 +88,10 @@ export class TasksController {
   @Delete(':taskId')
   async delete(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
     return this.requestHandlerService.handleRequest(async () => {
-      const deletedTask = await this.tasksService.deleteTask(taskId);
-      return { success: true, task: deletedTask };
+      return {
+        success: true,
+        task: await this.tasksService.deleteTask(taskId),
+      };
     }, 'Error when deleting a task');
   }
 }
