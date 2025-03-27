@@ -51,7 +51,7 @@ export class MailService {
     resetToken: string,
   ): Promise<void> {
     try {
-      const resetUrl = `${process.env.FRONTEND_URL}?resetToken=${resetToken}`;
+      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?resetToken=${resetToken}`;
       const html = `
       <!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reset Your UpTodo password</title></head><body style="font-family:Arial,sans-serif;padding:20px;color:#09090b"><div style="max-width:600px;margin:0 auto;background:#fafafa;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1);text-align:center;border:1px solid #d4d4d8"><h2 style="color:#09090b">Reset Your UpTodo password</h2><p style="color:#09090b">This link will expire after 30 minutes. If you didn't request a password reset you can delete this email.</p><a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background-color:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">Reset password</a></div></body></html>`;
 
