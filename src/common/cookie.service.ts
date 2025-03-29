@@ -6,10 +6,10 @@ export class CookieService {
   private readonly COOKIE_OPTIONS = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    // sameSite:
-    //   process.env.NODE_ENV === 'production'
-    //     ? ('none' as const)
-    //     : ('lax' as const),
+    sameSite:
+      process.env.NODE_ENV === 'production'
+        ? ('none' as const)
+        : ('lax' as const),
   };
 
   private readonly EXPIRATION_TIMES = {
