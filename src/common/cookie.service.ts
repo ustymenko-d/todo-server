@@ -5,7 +5,7 @@ import { Response } from 'express';
 export class CookieService {
   private readonly COOKIE_OPTIONS = {
     httpOnly: true,
-    partitioned: true,
+    partitioned: process.env.NODE_ENV === 'production',
     secure: process.env.NODE_ENV === 'production',
     sameSite:
       process.env.NODE_ENV === 'production'

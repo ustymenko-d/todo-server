@@ -162,6 +162,16 @@ export class AuthController {
     }, 'Refresh token error');
   }
 
+  @Get('clear-auth-cookies')
+  async clearCookies(
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<IResponseStatus> {
+    return this.requestHandlerService.handleRequest(async () => {
+      this.clearAuthCookies(res);
+      return { success: true, message: 'Coolies deleted successfully' };
+    }, 'Coolies deleted error');
+  }
+
   private setAuthCookies(
     res: Response,
     accessToken: string,
