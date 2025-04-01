@@ -16,16 +16,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  private isPayloadValid(payload: {
-    sub: string;
-    email: string;
-    tokenVersion: number;
-  }): boolean {
-    return (
-      !!payload?.sub && !!payload?.email && payload?.tokenVersion !== undefined
-    );
-  }
-
   async validate(payload: {
     sub: string;
     email: string;
@@ -56,5 +46,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       tokenVersion: user.tokenVersion,
     };
+  }
+
+  private isPayloadValid(payload: {
+    sub: string;
+    email: string;
+    tokenVersion: number;
+  }): boolean {
+    return (
+      !!payload?.sub && !!payload?.email && payload?.tokenVersion !== undefined
+    );
   }
 }

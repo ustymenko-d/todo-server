@@ -48,7 +48,7 @@ export class AuthController {
     }, 'Sign up error');
   }
 
-  @Get('verification')
+  @Get('account-verification')
   async verification(
     @Query('verificationToken') verificationToken: string,
   ): Promise<IResponseStatus> {
@@ -73,8 +73,8 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Get('account-info')
-  async getUserInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
+  @Get('check')
+  async checkAuth(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
     return this.requestHandlerService.handleRequest(async () => {
       return await this.authService.getAccountInfo(req.user.userId);
     }, 'Get user info error');
@@ -95,7 +95,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Delete('delete')
+  @Delete('delete-account')
   async deleteUser(
     @Req()
     req: { user: IJwtUser },
@@ -135,7 +135,7 @@ export class AuthController {
     }, 'Reset password error');
   }
 
-  @Get('refresh')
+  @Get('refresh-tokens')
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
