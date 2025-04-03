@@ -7,7 +7,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { RequestHandlerService } from 'src/common/request-handler.service';
+import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { GetTasksPayloadDto, TaskDto } from './tasks.dto';
 import { ICreateTaskPayload, ITask, ITasksData } from './task.types';
 

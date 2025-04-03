@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { RequestHandlerService } from 'src/common/request-handler.service';
+import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import {
   ICreateFolderPayload,
   IFolder,

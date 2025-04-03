@@ -13,7 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { FolderOwnerGuard } from './folder-owner.guard';
 import { FolderService } from './folder.service';
-import { RequestHandlerService } from 'src/common/request-handler.service';
+import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { FolderIdDto, FolderNameDto } from './folder.dto';
 import {
   IFolderResponse,

@@ -15,9 +15,9 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
 import { Request, Response } from 'express';
-import { CookieService } from '../common/cookie.service';
-import { RequestHandlerService } from 'src/common/request-handler.service';
-import { TokenService } from 'src/common/token.service';
+import { CookiesService } from '../common/services/cookies.service';
+import { RequestHandlerService } from 'src/common/services/request-handler.service';
+import { TokenService } from 'src/common/services/token.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 import { IAuthResponse, IUserInfo } from './auth.types';
 
@@ -26,7 +26,7 @@ export class AuthController {
   constructor(
     private readonly tokenService: TokenService,
     private readonly authService: AuthService,
-    private readonly cookieService: CookieService,
+    private readonly cookiesService: CookiesService,
     private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
@@ -39,7 +39,12 @@ export class AuthController {
       const { email, password, rememberMe } = body;
       const { accessToken, refreshToken, userInfo } =
         await this.authService.signup(email, password);
-      this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
+      this.cookiesService.setAuthCookies(
+        res,
+        accessToken,
+        refreshToken,
+        rememberMe,
+      );
       return {
         success: true,
         message: 'Registration successful. Please verify your email.',
@@ -67,7 +72,12 @@ export class AuthController {
       const { email, password, rememberMe } = body;
       const { accessToken, refreshToken, userInfo } =
         await this.authService.login(email, password);
-      this.setAuthCookies(res, accessToken, refreshToken, rememberMe);
+      this.cookiesService.setAuthCookies(
+        res,
+        accessToken,
+        refreshToken,
+        rememberMe,
+      );
       return { success: true, message: 'Login successful', userInfo };
     }, 'Login error');
   }
@@ -89,7 +99,7 @@ export class AuthController {
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.logout(req.user.userId);
-      this.clearAuthCookies(res);
+      this.cookiesService.clearAuthCookies(res);
       return { success: true, message: 'Logout successful' };
     }, 'Log out error');
   }
@@ -103,7 +113,7 @@ export class AuthController {
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.deleteUser(req.user.userId);
-      this.clearAuthCookies(res);
+      this.cookiesService.clearAuthCookies(res);
       return {
         success: true,
         message: `User deleted successfully`,
@@ -152,7 +162,7 @@ export class AuthController {
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.refreshToken(userId, refreshToken);
 
-      this.setAuthCookies(
+      this.cookiesService.setAuthCookies(
         res,
         newAccessToken,
         newRefreshToken,
@@ -167,23 +177,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
-      this.clearAuthCookies(res);
+      this.cookiesService.clearAuthCookies(res);
       return { success: true, message: 'Coolies deleted successfully' };
     }, 'Coolies deleted error');
-  }
-
-  private setAuthCookies(
-    res: Response,
-    accessToken: string,
-    refreshToken: string,
-    rememberMe: boolean = false,
-  ) {
-    this.cookieService.setAccessTokenCookie(res, accessToken, rememberMe);
-    this.cookieService.setRefreshTokenCookie(res, refreshToken, rememberMe);
-  }
-
-  private clearAuthCookies(res: Response) {
-    this.cookieService.clearAccessTokenCookie(res);
-    this.cookieService.clearRefreshTokenCookie(res);
   }
 }

@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { RequestHandlerService } from 'src/common/request-handler.service';
+import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { TaskOwnerGuard } from './task-owner.guard';
 import { TasksService } from './tasks.service';
 import {

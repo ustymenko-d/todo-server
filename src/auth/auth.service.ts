@@ -14,10 +14,10 @@ import {
   TFindUserByQuery,
 } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { MailService } from 'src/common/mail.service';
-import { PasswordService } from 'src/common/password.service';
-import { TokenService } from 'src/common/token.service';
-import { RequestHandlerService } from 'src/common/request-handler.service';
+import { MailService } from 'src/common/services/mail.service';
+import { PasswordService } from 'src/common/services/password.service';
+import { TokenService } from 'src/common/services/token.service';
+import { RequestHandlerService } from 'src/common/services/request-handler.service';
 
 @Injectable()
 export class AuthService {

@@ -1,16 +1,18 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { IUser } from 'src/auth/auth.types';
-import { IJwtUser } from './common.types';
+import { IJwtUser } from '../common.types';
 
 @Injectable()
 export class TokenService {
   private readonly logger = new Logger(TokenService.name);
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {}
@@ -89,7 +91,10 @@ export class TokenService {
     try {
       return this.jwtService.sign(
         { userId: user.id, tokenVersion: user.tokenVersion },
-        { secret: process.env.JWT_RESET_SECRET, expiresIn: '30m' },
+        {
+          secret: this.configService.get<string>('JWT_RESET_SECRET'),
+          expiresIn: '30m',
+        },
       );
     } catch (error) {
       this.logAndThrowError('Failed to create reset password token', error);
@@ -99,7 +104,7 @@ export class TokenService {
   verifyPasswordResetToken(resetToken: string): IJwtUser {
     try {
       return this.jwtService.verify(resetToken, {
-        secret: process.env.JWT_RESET_SECRET,
+        secret: this.configService.get<string>('JWT_RESET_SECRET'),
       });
     } catch (error) {
       this.logAndThrowError('Failed to verify reset password token', error);
