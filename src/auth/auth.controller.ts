@@ -5,26 +5,22 @@ import {
   Delete,
   UseGuards,
   Req,
-  UnauthorizedException,
   Res,
   Query,
   Get,
-  Patch,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthDto, EmailBaseDto, PasswordBaseDto } from './auth.dto';
-import { Request, Response } from 'express';
-import { CookiesService } from '../common/services/cookies.service';
+import { AuthDto } from './auth.dto';
+import { Response } from 'express';
+import { CookiesService } from './cookies/cookies.service';
 import { RequestHandlerService } from 'src/common/services/request-handler.service';
-import { TokenService } from 'src/common/services/token.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 import { IAuthResponse, IUserInfo } from './auth.types';
 
 @Controller('auth')
 export class AuthController {
   constructor(
-    private readonly tokenService: TokenService,
     private readonly authService: AuthService,
     private readonly cookiesService: CookiesService,
     private readonly requestHandlerService: RequestHandlerService,
@@ -116,66 +112,5 @@ export class AuthController {
         message: `User deleted successfully`,
       };
     }, 'Delete account error');
-  }
-
-  @Post('forgot-password')
-  async forgotPassword(
-    @Body() { email }: EmailBaseDto,
-  ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.sendResetPasswordEmail(email);
-      return {
-        success: true,
-        message: 'Password reset email sent successfully',
-      };
-    }, 'Error while sending reset password email');
-  }
-
-  @Patch('reset-password')
-  async resetPassword(
-    @Query('resetToken') resetToken: string,
-    @Body() { password }: PasswordBaseDto,
-  ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.resetPassword(resetToken, password);
-      return { success: true, message: 'Password updated successfully' };
-    }, 'Reset password error');
-  }
-
-  @Get('refresh-tokens')
-  async refreshTokens(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-    @Query('rememberMe') rememberMe?: string,
-  ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
-      const { access_token: accessToken, refresh_token: refreshToken } =
-        req.cookies;
-
-      if (!accessToken || !refreshToken)
-        throw new UnauthorizedException('Missing access or refresh token');
-
-      const userId = this.tokenService.extractUserIdFromToken(accessToken);
-      const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.authService.refreshTokens(userId, refreshToken);
-
-      this.cookiesService.setAuthCookies(
-        res,
-        newAccessToken,
-        newRefreshToken,
-        rememberMe === 'true',
-      );
-      return { success: true, message: 'Tokens updated successfully' };
-    }, 'Refresh token error');
-  }
-
-  @Get('clear-auth-cookies')
-  async clearCookies(
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
-      this.cookiesService.clearAuthCookies(res);
-      return { success: true, message: 'Cookies deleted successfully' };
-    }, 'Coolies deleted error');
   }
 }

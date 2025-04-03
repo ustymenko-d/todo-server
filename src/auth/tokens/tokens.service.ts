@@ -5,11 +5,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { IUser } from 'src/auth/auth.types';
-import { IJwtUser } from '../common.types';
+import { IJwtUser } from '../../common/common.types';
 
 @Injectable()
-export class TokenService {
-  private readonly logger = new Logger(TokenService.name);
+export class TokensService {
+  private readonly logger = new Logger(TokensService.name);
 
   constructor(
     private readonly configService: ConfigService,

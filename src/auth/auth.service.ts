@@ -15,16 +15,16 @@ import {
   TFindUserByQuery,
 } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { MailService } from 'src/common/services/mail.service';
-import { PasswordService } from 'src/common/services/password.service';
-import { TokenService } from 'src/common/services/token.service';
+import { MailService } from 'src/auth/mail/mail.service';
+import { PasswordService } from 'src/auth/password/password.service';
+import { TokensService } from 'src/auth/tokens/tokens.service';
 import { RequestHandlerService } from 'src/common/services/request-handler.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tokenService: TokenService,
+    private readonly tokenService: TokensService,
     private readonly mailService: MailService,
     private readonly passwordService: PasswordService,
     private readonly requestHandlerService: RequestHandlerService,
