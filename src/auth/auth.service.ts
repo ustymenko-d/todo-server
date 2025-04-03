@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -78,14 +79,10 @@ export class AuthService {
         if (!passwordVerified)
           throw new UnauthorizedException('Invalid credentials');
 
-        const updatedUser = await this.revokeTokensAndUpdateUser(user.id);
-
         return {
-          accessToken: this.tokenService.createAccessToken(updatedUser),
-          refreshToken: await this.tokenService.createRefreshToken(
-            updatedUser.id,
-          ),
-          userInfo: this.createUserInfo(updatedUser),
+          accessToken: this.tokenService.createAccessToken(user),
+          refreshToken: await this.tokenService.createRefreshToken(user.id),
+          userInfo: this.createUserInfo(user),
         };
       },
       'Login failed',
@@ -104,20 +101,9 @@ export class AuthService {
     );
   }
 
-  async logout(id: string): Promise<void> {
+  async deleteUser(id: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
-        await this.revokeTokensAndUpdateUser(id);
-      },
-      'Logout failed',
-      true,
-    );
-  }
-
-  async deleteUser(userId: string): Promise<void> {
-    return this.requestHandlerService.handleRequest(
-      async () => {
-        const { id } = await this.findUserBy({ id: userId });
         await this.prisma.user.delete({ where: { id } });
       },
       'Delete user failed',
@@ -125,14 +111,14 @@ export class AuthService {
     );
   }
 
-  async sendPasswordResetEmail(email: string): Promise<void> {
+  async sendResetPasswordEmail(email: string): Promise<void> {
     return this.requestHandlerService.handleRequest(
       async () => {
         const user = await this.findUserBy({ email });
-        const resetToken = this.tokenService.createPasswordResetToken(user);
-        await this.mailService.sendPasswordResetEmail(email, resetToken);
+        const resetToken = this.tokenService.createResetPasswordToken(user);
+        await this.mailService.sendResetPasswordEmail(email, resetToken);
       },
-      'Password reset email send failed',
+      'Reset password email send failed',
       true,
     );
   }
@@ -141,7 +127,7 @@ export class AuthService {
     return this.requestHandlerService.handleRequest(
       async () => {
         const { userId, tokenVersion } =
-          this.tokenService.verifyPasswordResetToken(resetToken);
+          this.tokenService.verifyResetPasswordToken(resetToken);
         const { id } = await this.findUserBy({ id: userId, tokenVersion });
         const hashedPassword =
           await this.passwordService.hashPassword(password);
@@ -151,33 +137,28 @@ export class AuthService {
           data: { password: hashedPassword, tokenVersion: { increment: 1 } },
         });
       },
-      'Password reset failed',
+      'Reset password failed',
       true,
     );
   }
 
-  async refreshToken(id: string, refreshToken: string): Promise<ITokenPair> {
+  async refreshTokens(id: string, refreshToken: string): Promise<ITokenPair> {
     return this.requestHandlerService.handleRequest(
       async () => {
         await this.tokenService.validateRefreshToken(id, refreshToken);
-        await this.tokenService.revokePreviousTokens(id);
-
-        const newRefreshToken = await this.tokenService.createRefreshToken(id);
         const user = await this.findUserBy({ id });
-
-        const updatedUser = await this.incrementTokenVersion(user);
-        const newAccessToken = this.tokenService.createAccessToken(updatedUser);
-
+        const newAccessToken = this.tokenService.createAccessToken(user);
+        const newRefreshToken = await this.tokenService.createRefreshToken(id);
         return { accessToken: newAccessToken, refreshToken: newRefreshToken };
       },
-      'Refresh token failed',
+      'Failed to refresh tokens',
       true,
     );
   }
 
   private async findUserBy(query: TFindUserByQuery): Promise<IUser> {
     const user = await this.prisma.user.findUnique({ where: query });
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) throw new NotFoundException('User not found');
     return user;
   }
 

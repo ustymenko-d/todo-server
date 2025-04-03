@@ -50,17 +50,17 @@ export class AuthController {
         message: 'Registration successful. Please verify your email.',
         userInfo,
       };
-    }, 'Sign up error');
+    }, 'Signup error');
   }
 
-  @Get('account-verification')
-  async verification(
+  @Get('email-verification')
+  async emailVerification(
     @Query('verificationToken') verificationToken: string,
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       await this.authService.verifyEmail(verificationToken);
       return { success: true, message: 'Email verified successfully' };
-    }, 'Eror during email verification');
+    }, 'Error during email verification');
   }
 
   @Post('login')
@@ -93,20 +93,17 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
   async logout(
-    @Req()
-    req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.logout(req.user.userId);
       this.cookiesService.clearAuthCookies(res);
       return { success: true, message: 'Logout successful' };
-    }, 'Log out error');
+    }, 'Logout error');
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Delete('delete-account')
-  async deleteUser(
+  async deleteAccount(
     @Req()
     req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
@@ -126,7 +123,7 @@ export class AuthController {
     @Body() { email }: EmailBaseDto,
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
-      await this.authService.sendPasswordResetEmail(email);
+      await this.authService.sendResetPasswordEmail(email);
       return {
         success: true,
         message: 'Password reset email sent successfully',
@@ -146,7 +143,7 @@ export class AuthController {
   }
 
   @Get('refresh-tokens')
-  async refresh(
+  async refreshTokens(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Query('rememberMe') rememberMe?: string,
@@ -160,7 +157,7 @@ export class AuthController {
 
       const userId = this.tokenService.extractUserIdFromToken(accessToken);
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.authService.refreshToken(userId, refreshToken);
+        await this.authService.refreshTokens(userId, refreshToken);
 
       this.cookiesService.setAuthCookies(
         res,
@@ -178,7 +175,7 @@ export class AuthController {
   ): Promise<IResponseStatus> {
     return this.requestHandlerService.handleRequest(async () => {
       this.cookiesService.clearAuthCookies(res);
-      return { success: true, message: 'Coolies deleted successfully' };
+      return { success: true, message: 'Cookies deleted successfully' };
     }, 'Coolies deleted error');
   }
 }

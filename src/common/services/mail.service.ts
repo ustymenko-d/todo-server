@@ -56,7 +56,7 @@ export class MailService {
     }
   }
 
-  async sendPasswordResetEmail(
+  async sendResetPasswordEmail(
     email: string,
     resetToken: string,
   ): Promise<void> {

@@ -87,7 +87,7 @@ export class TokenService {
     }
   }
 
-  createPasswordResetToken(user: IUser): string {
+  createResetPasswordToken(user: IUser): string {
     try {
       return this.jwtService.sign(
         { userId: user.id, tokenVersion: user.tokenVersion },
@@ -101,7 +101,7 @@ export class TokenService {
     }
   }
 
-  verifyPasswordResetToken(resetToken: string): IJwtUser {
+  verifyResetPasswordToken(resetToken: string): IJwtUser {
     try {
       return this.jwtService.verify(resetToken, {
         secret: this.configService.get<string>('JWT_RESET_SECRET'),
