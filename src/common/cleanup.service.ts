@@ -49,9 +49,9 @@ export class CleanupService {
   }
 
   private async cleanupUnverifiedUsers(): Promise<void> {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const conditions = { isVerified: false, createdAt: { lt: oneWeekAgo } };
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const conditions = { isVerified: false, createdAt: { lt: threeDaysAgo } };
     await this.cleanupEntities('User', conditions);
   }
 

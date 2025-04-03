@@ -14,8 +14,8 @@ export class CookieService {
   };
 
   private readonly EXPIRATION_TIMES = {
-    accessToken: 3 * 60 * 60 * 1000, // 3 hours
-    refreshToken: 7 * 24 * 60 * 60 * 1000, // 7 days
+    accessToken: 30 * 60 * 1000, // 30 minutes
+    refreshToken: 12 * 60 * 60 * 1000, // 12 hours
   };
 
   private setCookie(
