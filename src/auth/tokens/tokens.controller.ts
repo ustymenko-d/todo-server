@@ -6,12 +6,12 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
-import { IResponseStatus } from 'src/common/common.types';
-import { TokensService } from './tokens.service';
-import { AuthService } from '../auth.service';
-import { CookiesService } from '../cookies/cookies.service';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { Request, Response } from 'express';
+import { AuthService } from '../auth.service';
+import { TokensService } from './tokens.service';
+import { CookiesService } from '../cookies/cookies.service';
+import { handleRequest } from 'src/common/utils/request-handler.util';
+import { IResponseStatus } from 'src/common/common.types';
 
 @Controller('tokens')
 export class TokensController {
@@ -19,7 +19,6 @@ export class TokensController {
     private readonly tokenService: TokensService,
     private readonly authService: AuthService,
     private readonly cookiesService: CookiesService,
-    private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
   @Get('refresh-tokens')
@@ -28,7 +27,7 @@ export class TokensController {
     @Res({ passthrough: true }) res: Response,
     @Query('rememberMe') rememberMe?: string,
   ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const { access_token: accessToken, refresh_token: refreshToken } =
         req.cookies;
 

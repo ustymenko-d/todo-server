@@ -5,23 +5,20 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import {
   ICreateFolderPayload,
   IFolder,
   IGetFolderPayload,
   IGetFolderResponse,
 } from './folder.types';
+import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Injectable()
 export class FolderService {
-  constructor(
-    private prisma: PrismaService,
-    private readonly requestHandlerService: RequestHandlerService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const { userId } = payload;
 
@@ -47,7 +44,7 @@ export class FolderService {
   }
 
   async getFolders(payload: IGetFolderPayload): Promise<IGetFolderResponse> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const { page, limit } = payload;
         const skip = (page - 1) * limit;
@@ -77,7 +74,7 @@ export class FolderService {
   }
 
   async renameFolder(id: string, name: string): Promise<IFolder> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const folder = await this.prisma.folder.findUnique({
           where: { id },
@@ -98,7 +95,7 @@ export class FolderService {
   }
 
   async deleteFolder(id: string): Promise<IFolder> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => await this.prisma.folder.delete({ where: { id } }),
       'Error while deleting folder',
       true,

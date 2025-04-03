@@ -18,7 +18,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/auth/mail/mail.service';
 import { PasswordService } from 'src/auth/password/password.service';
 import { TokensService } from 'src/auth/tokens/tokens.service';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
+import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Injectable()
 export class AuthService {
@@ -27,11 +27,10 @@ export class AuthService {
     private readonly tokenService: TokensService,
     private readonly mailService: MailService,
     private readonly passwordService: PasswordService,
-    private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
   async signup(email: string, password: string): Promise<IAuthData> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const verificationToken = uuidv4();
         const hashedPassword =
@@ -54,7 +53,7 @@ export class AuthService {
   }
 
   async verifyEmail(verificationToken: string): Promise<void> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const { id } = await this.findUserBy({ verificationToken });
         await this.prisma.user.update({
@@ -68,7 +67,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<IAuthData> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const user = await this.findUserBy({ email });
         const passwordVerified = await this.passwordService.comparePasswords(
@@ -91,7 +90,7 @@ export class AuthService {
   }
 
   async getAccountInfo(id: string): Promise<IUserInfo> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const user = await this.findUserBy({ id });
         return this.createUserInfo(user);
@@ -102,7 +101,7 @@ export class AuthService {
   }
 
   async deleteUser(id: string): Promise<void> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         await this.prisma.user.delete({ where: { id } });
       },
@@ -112,7 +111,7 @@ export class AuthService {
   }
 
   async sendResetPasswordEmail(email: string): Promise<void> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const user = await this.findUserBy({ email });
         const resetToken = this.tokenService.createResetPasswordToken(user);
@@ -124,7 +123,7 @@ export class AuthService {
   }
 
   async resetPassword(resetToken: string, password: string): Promise<void> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         const { userId, tokenVersion } =
           this.tokenService.verifyResetPasswordToken(resetToken);
@@ -143,7 +142,7 @@ export class AuthService {
   }
 
   async refreshTokens(id: string, refreshToken: string): Promise<ITokenPair> {
-    return this.requestHandlerService.handleRequest(
+    return handleRequest(
       async () => {
         await this.tokenService.validateRefreshToken(id, refreshToken);
         const user = await this.findUserBy({ id });

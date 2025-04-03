@@ -13,7 +13,6 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { FolderOwnerGuard } from './folder-owner.guard';
 import { FolderService } from './folder.service';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { FolderIdDto, FolderNameDto } from './folder.dto';
 import {
   IFolderResponse,
@@ -21,13 +20,11 @@ import {
   IGetFolderResponse,
 } from './folder.types';
 import { IJwtUser } from 'src/common/common.types';
+import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Controller('folder')
 export class FolderController {
-  constructor(
-    private readonly folderService: FolderService,
-    private readonly requestHandlerService: RequestHandlerService,
-  ) {}
+  constructor(private readonly folderService: FolderService) {}
 
   @UseGuards(AuthGuard('jwt'))
   @Post()
@@ -36,7 +33,7 @@ export class FolderController {
     req: { user: IJwtUser },
     @Body() body: FolderNameDto,
   ): Promise<IFolderResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const payload = {
         name: body.name,
         userId: req.user.userId,
@@ -56,7 +53,7 @@ export class FolderController {
     req: { user: IJwtUser },
     @Query() query: IGetFolderRequest,
   ): Promise<IGetFolderResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const { page, limit, name } = query;
       const payload = {
         name,
@@ -74,7 +71,7 @@ export class FolderController {
     @Param() { folderId }: FolderIdDto,
     @Body() { name }: FolderNameDto,
   ): Promise<IFolderResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       return {
         success: true,
         message: 'Folder rename successfully',
@@ -86,7 +83,7 @@ export class FolderController {
   @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
   @Delete(':folderId')
   async delete(@Param() { folderId }: FolderIdDto): Promise<IFolderResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       return {
         success: true,
         message: 'Folder deleted successfully',

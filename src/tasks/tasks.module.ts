@@ -3,10 +3,9 @@ import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
-import { CommonModule } from 'src/common/common.module';
 
 @Module({
-  imports: [PrismaModule, CommonModule],
+  imports: [PrismaModule],
   controllers: [TasksController],
   providers: [TasksService, PrismaService],
 })

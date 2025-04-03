@@ -7,19 +7,16 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { GetTasksPayloadDto, TaskDto } from './tasks.dto';
 import { ICreateTaskPayload, ITask, ITasksData } from './task.types';
+import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Injectable()
 export class TasksService {
-  constructor(
-    private prisma: PrismaService,
-    private readonly requestHandlerService: RequestHandlerService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async getTasks(payload: GetTasksPayloadDto): Promise<ITasksData> {
-    return await this.requestHandlerService.handleRequest(
+    return await handleRequest(
       async () => {
         const { page, limit } = payload;
         const skip = (page - 1) * limit;
@@ -54,7 +51,7 @@ export class TasksService {
   }
 
   async createTask(payload: ICreateTaskPayload): Promise<ITask> {
-    return await this.requestHandlerService.handleRequest(
+    return await handleRequest(
       async () => {
         const { userId, parentTaskId, folderId } = payload;
         await this.validateTaskCreation(userId);
@@ -85,7 +82,7 @@ export class TasksService {
   }
 
   async editTask(payload: TaskDto): Promise<ITask> {
-    return await this.requestHandlerService.handleRequest(
+    return await handleRequest(
       async () => {
         const { id, parentTaskId, folderId, userId } = payload;
 
@@ -120,7 +117,7 @@ export class TasksService {
   }
 
   async toggleStatus(id: string): Promise<ITask> {
-    return await this.requestHandlerService.handleRequest(
+    return await handleRequest(
       async () => {
         const task = await this.prisma.task.findUniqueOrThrow({
           where: { id },
@@ -138,7 +135,7 @@ export class TasksService {
   }
 
   async deleteTask(id: string): Promise<ITask> {
-    return await this.requestHandlerService.handleRequest(
+    return await handleRequest(
       async () => this.prisma.task.delete({ where: { id } }),
       'Error while deleting a task',
       true,

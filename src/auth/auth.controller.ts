@@ -14,16 +14,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthDto } from './auth.dto';
 import { Response } from 'express';
 import { CookiesService } from './cookies/cookies.service';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 import { IAuthResponse, IUserInfo } from './auth.types';
+import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly cookiesService: CookiesService,
-    private readonly requestHandlerService: RequestHandlerService,
   ) {}
 
   @Post('signup')
@@ -31,7 +30,7 @@ export class AuthController {
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<IAuthResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const { email, password, rememberMe } = body;
       const { accessToken, refreshToken, userInfo } =
         await this.authService.signup(email, password);
@@ -53,7 +52,7 @@ export class AuthController {
   async emailVerification(
     @Query('verificationToken') verificationToken: string,
   ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       await this.authService.verifyEmail(verificationToken);
       return { success: true, message: 'Email verified successfully' };
     }, 'Error during email verification');
@@ -64,7 +63,7 @@ export class AuthController {
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<IAuthResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const { email, password, rememberMe } = body;
       const { accessToken, refreshToken, userInfo } =
         await this.authService.login(email, password);
@@ -81,7 +80,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('check')
   async checkAuth(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       return await this.authService.getAccountInfo(req.user.userId);
     }, 'Get user info error');
   }
@@ -91,7 +90,7 @@ export class AuthController {
   async logout(
     @Res({ passthrough: true }) res: Response,
   ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       this.cookiesService.clearAuthCookies(res);
       return { success: true, message: 'Logout successful' };
     }, 'Logout error');
@@ -104,7 +103,7 @@ export class AuthController {
     req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
   ): Promise<IResponseStatus> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       await this.authService.deleteUser(req.user.userId);
       this.cookiesService.clearAuthCookies(res);
       return {

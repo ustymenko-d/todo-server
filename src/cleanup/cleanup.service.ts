@@ -55,7 +55,7 @@ export class CleanupService {
     await this.cleanupEntities('User', conditions);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async dailyCleaning(): Promise<void> {
     this.logger.log('Starting daily cleaning...');
     await this.cleanupTokens();

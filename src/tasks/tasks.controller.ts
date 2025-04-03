@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { RequestHandlerService } from 'src/common/services/request-handler.service';
 import { TaskOwnerGuard } from './task-owner.guard';
 import { TasksService } from './tasks.service';
 import {
@@ -21,13 +20,11 @@ import {
 } from './tasks.dto';
 import { IJwtUser } from 'src/common/common.types';
 import { IGetTasksResponse, ITaskResponse } from './task.types';
+import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Controller('tasks')
 export class TasksController {
-  constructor(
-    private readonly tasksService: TasksService,
-    private readonly requestHandlerService: RequestHandlerService,
-  ) {}
+  constructor(private readonly tasksService: TasksService) {}
 
   @UseGuards(AuthGuard('jwt'))
   @Post('get')
@@ -35,7 +32,7 @@ export class TasksController {
     @Req() req: { user: IJwtUser },
     @Body() body: GetTasksRequestDto,
   ): Promise<IGetTasksResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const { userId } = req.user;
       return {
         success: true,
@@ -53,7 +50,7 @@ export class TasksController {
     @Req() req: { user: IJwtUser },
     @Body() body: TaskBaseDto,
   ): Promise<ITaskResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       const { userId } = req.user;
       return {
         success: true,
@@ -68,7 +65,7 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Put()
   async edit(@Body() body: TaskDto): Promise<ITaskResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       return { success: true, task: await this.tasksService.editTask(body) };
     }, 'Error while editing a task');
   }
@@ -76,7 +73,7 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Patch(':taskId')
   async toggleStatus(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       return {
         success: true,
         task: await this.tasksService.toggleStatus(taskId),
@@ -87,7 +84,7 @@ export class TasksController {
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
   async delete(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
-    return this.requestHandlerService.handleRequest(async () => {
+    return handleRequest(async () => {
       return {
         success: true,
         task: await this.tasksService.deleteTask(taskId),
