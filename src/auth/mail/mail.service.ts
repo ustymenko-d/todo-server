@@ -5,7 +5,6 @@ import * as nodemailer from 'nodemailer';
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-
   private readonly transporter: nodemailer.Transporter;
   private readonly frontendUrl: string;
   private readonly emailUser: string;

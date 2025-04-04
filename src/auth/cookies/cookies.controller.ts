@@ -4,7 +4,7 @@ import { handleRequest } from 'src/common/utils/request-handler.util';
 import { IResponseStatus } from 'src/common/common.types';
 import { Response } from 'express';
 
-@Controller('cookies')
+@Controller('auth/cookies')
 export class CookiesController {
   constructor(private readonly cookiesService: CookiesService) {}
 

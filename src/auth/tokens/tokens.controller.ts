@@ -7,17 +7,15 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { AuthService } from '../auth.service';
 import { TokensService } from './tokens.service';
 import { CookiesService } from '../cookies/cookies.service';
 import { handleRequest } from 'src/common/utils/request-handler.util';
 import { IResponseStatus } from 'src/common/common.types';
 
-@Controller('tokens')
+@Controller('auth/tokens')
 export class TokensController {
   constructor(
     private readonly tokenService: TokensService,
-    private readonly authService: AuthService,
     private readonly cookiesService: CookiesService,
   ) {}
 
@@ -36,7 +34,7 @@ export class TokensController {
 
       const userId = this.tokenService.extractUserIdFromToken(accessToken);
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.authService.refreshTokens(userId, refreshToken);
+        await this.tokenService.refreshTokens(userId, refreshToken);
 
       this.cookiesService.setAuthCookies(
         res,

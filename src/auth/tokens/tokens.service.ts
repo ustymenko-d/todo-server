@@ -1,17 +1,27 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import { IUser } from 'src/auth/auth.types';
+import { ITokenPair, IUser } from 'src/auth/auth.types';
 import { IJwtUser } from '../../common/common.types';
+import { handleRequest } from 'src/common/utils/request-handler.util';
+import { AuthService } from '../auth.service';
 
 @Injectable()
 export class TokensService {
   private readonly logger = new Logger(TokensService.name);
 
   constructor(
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
@@ -54,6 +64,20 @@ export class TokensService {
     } catch (error) {
       this.logAndThrowError('Failed to create refresh token', error);
     }
+  }
+
+  async refreshTokens(id: string, refreshToken: string): Promise<ITokenPair> {
+    return handleRequest(
+      async () => {
+        await this.validateRefreshToken(id, refreshToken);
+        const user = await this.authService.findUserBy({ id });
+        const newAccessToken = this.createAccessToken(user);
+        const newRefreshToken = await this.createRefreshToken(id);
+        return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+      },
+      'Failed to refresh tokens',
+      true,
+    );
   }
 
   async validateRefreshToken(

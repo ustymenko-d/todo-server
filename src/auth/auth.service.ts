@@ -7,13 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  IAuthData,
-  ITokenPair,
-  IUser,
-  IUserInfo,
-  TFindUserByQuery,
-} from './auth.types';
+import { IAuthData, IUser, IUserInfo, TFindUserByQuery } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/auth/mail/mail.service';
 import { PasswordService } from 'src/auth/password/password.service';
@@ -110,57 +104,6 @@ export class AuthService {
     );
   }
 
-  async sendResetPasswordEmail(email: string): Promise<void> {
-    return handleRequest(
-      async () => {
-        const user = await this.findUserBy({ email });
-        const resetToken = this.tokenService.createResetPasswordToken(user);
-        await this.mailService.sendResetPasswordEmail(email, resetToken);
-      },
-      'Reset password email send failed',
-      true,
-    );
-  }
-
-  async resetPassword(resetToken: string, password: string): Promise<void> {
-    return handleRequest(
-      async () => {
-        const { userId, tokenVersion } =
-          this.tokenService.verifyResetPasswordToken(resetToken);
-        const { id } = await this.findUserBy({ id: userId, tokenVersion });
-        const hashedPassword =
-          await this.passwordService.hashPassword(password);
-
-        await this.prisma.user.update({
-          where: { id },
-          data: { password: hashedPassword, tokenVersion: { increment: 1 } },
-        });
-      },
-      'Reset password failed',
-      true,
-    );
-  }
-
-  async refreshTokens(id: string, refreshToken: string): Promise<ITokenPair> {
-    return handleRequest(
-      async () => {
-        await this.tokenService.validateRefreshToken(id, refreshToken);
-        const user = await this.findUserBy({ id });
-        const newAccessToken = this.tokenService.createAccessToken(user);
-        const newRefreshToken = await this.tokenService.createRefreshToken(id);
-        return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-      },
-      'Failed to refresh tokens',
-      true,
-    );
-  }
-
-  private async findUserBy(query: TFindUserByQuery): Promise<IUser> {
-    const user = await this.prisma.user.findUnique({ where: query });
-    if (!user) throw new NotFoundException('User not found');
-    return user;
-  }
-
   private async createUser(
     email: string,
     hashedPassword: string,
@@ -187,16 +130,10 @@ export class AuthService {
     }
   }
 
-  private async incrementTokenVersion({ id }: IUser): Promise<IUser> {
-    return await this.prisma.user.update({
-      where: { id },
-      data: { tokenVersion: { increment: 1 } },
-    });
-  }
-
-  private async revokeTokensAndUpdateUser(id: string): Promise<IUser> {
-    await this.tokenService.revokePreviousTokens(id);
-    return this.incrementTokenVersion(await this.findUserBy({ id }));
+  async findUserBy(query: TFindUserByQuery): Promise<IUser> {
+    const user = await this.prisma.user.findUnique({ where: query });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   private createUserInfo({

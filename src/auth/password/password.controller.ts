@@ -1,19 +1,19 @@
 import { Body, Controller, Patch, Post, Query } from '@nestjs/common';
-import { AuthService } from '../auth.service';
 import { handleRequest } from 'src/common/utils/request-handler.util';
 import { EmailBaseDto, PasswordBaseDto } from '../auth.dto';
 import { IResponseStatus } from 'src/common/common.types';
+import { PasswordService } from './password.service';
 
-@Controller('password')
+@Controller('auth/password')
 export class PasswordController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly passwordService: PasswordService) {}
 
   @Post('forgot-password')
   async forgotPassword(
     @Body() { email }: EmailBaseDto,
   ): Promise<IResponseStatus> {
     return handleRequest(async () => {
-      await this.authService.sendResetPasswordEmail(email);
+      await this.passwordService.sendResetPasswordEmail(email);
       return {
         success: true,
         message: 'Password reset email sent successfully',
@@ -27,7 +27,7 @@ export class PasswordController {
     @Body() { password }: PasswordBaseDto,
   ): Promise<IResponseStatus> {
     return handleRequest(async () => {
-      await this.authService.resetPassword(resetToken, password);
+      await this.passwordService.resetPassword(resetToken, password);
       return { success: true, message: 'Password updated successfully' };
     }, 'Reset password error');
   }
