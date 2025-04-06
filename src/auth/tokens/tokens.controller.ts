@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Logger,
   Query,
   Req,
   Res,
@@ -9,8 +10,9 @@ import {
 import { Request, Response } from 'express';
 import { TokensService } from './tokens.service';
 import { CookiesService } from '../cookies/cookies.service';
-import { handleRequest } from 'src/common/utils/request-handler.util';
+import { handleRequest } from 'src/common/utils/requestHandler';
 import { IResponseStatus } from 'src/common/common.types';
+import { getClientMeta } from 'src/common/utils/getClientMeta';
 
 @Controller('auth/tokens')
 export class TokensController {
@@ -25,24 +27,31 @@ export class TokensController {
     @Res({ passthrough: true }) res: Response,
     @Query('rememberMe') rememberMe?: string,
   ): Promise<IResponseStatus> {
-    return handleRequest(async () => {
-      const { access_token: accessToken, refresh_token: refreshToken } =
-        req.cookies;
+    return handleRequest(
+      async () => {
+        const meta = getClientMeta(req);
+        const { access_token: accessToken, refresh_token: refreshToken } =
+          req.cookies;
 
-      if (!accessToken || !refreshToken)
-        throw new UnauthorizedException('Missing access or refresh token');
+        if (!accessToken || !refreshToken)
+          throw new UnauthorizedException('Missing access or refresh token');
 
-      const userId = this.tokenService.extractUserIdFromToken(accessToken);
-      const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.tokenService.refreshTokens(userId, refreshToken);
+        const userId = this.tokenService.extractUserIdFromToken(accessToken);
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+          await this.tokenService.refreshTokens(userId, refreshToken, meta);
 
-      this.cookiesService.setAuthCookies(
-        res,
-        newAccessToken,
-        newRefreshToken,
-        rememberMe === 'true',
-      );
-      return { success: true, message: 'Tokens updated successfully' };
-    }, 'Refresh token error');
+        this.cookiesService.setAuthCookies(
+          res,
+          newAccessToken,
+          newRefreshToken,
+          rememberMe === 'true',
+        );
+        return { success: true, message: 'Tokens updated successfully' };
+      },
+      'Refresh token error',
+      this.logger,
+    );
   }
+
+  private readonly logger = new Logger(TokensController.name);
 }

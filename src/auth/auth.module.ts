@@ -6,6 +6,7 @@ import { PasswordModule } from './password/password.module';
 import { CookiesModule } from './cookies/cookies.module';
 import { MailModule } from './mail/mail.module';
 import { TokensModule } from './tokens/tokens.module';
+import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { TokensModule } from './tokens/tokens.module';
     TokensModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

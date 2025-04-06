@@ -20,6 +20,8 @@ export interface ITaskResponse {
 }
 
 export interface ITasksData {
+  page: number;
+  limit: number;
   pages: number;
   total: number;
   tasks: ITask[];

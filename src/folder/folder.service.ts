@@ -11,95 +11,71 @@ import {
   IGetFolderPayload,
   IGetFolderResponse,
 } from './folder.types';
-import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Injectable()
 export class FolderService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {
-    return handleRequest(
-      async () => {
-        const { userId } = payload;
+    const { userId } = payload;
 
-        const { isVerified } = await this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { isVerified: true },
-        });
+    const { isVerified } = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isVerified: true },
+    });
 
-        const userFoldersCount = await this.prisma.folder.count({
-          where: { userId },
-        });
+    const userFoldersCount = await this.prisma.folder.count({
+      where: { userId },
+    });
 
-        if (!isVerified && userFoldersCount >= 3)
-          throw new ForbiddenException(
-            'Unverified users cannot create more than three folders',
-          );
+    if (!isVerified && userFoldersCount >= 3)
+      throw new ForbiddenException(
+        'Unverified users cannot create more than three folders',
+      );
 
-        return await this.prisma.folder.create({ data: payload });
-      },
-      'Error while creating folder',
-      true,
-    );
+    return await this.prisma.folder.create({ data: payload });
   }
 
   async getFolders(payload: IGetFolderPayload): Promise<IGetFolderResponse> {
-    return handleRequest(
-      async () => {
-        const { page, limit } = payload;
-        const skip = (page - 1) * limit;
-        const where = this.buildFolderWhereInput(payload);
+    const { page, limit } = payload;
+    const skip = (page - 1) * limit;
+    const where = this.buildFolderWhereInput(payload);
 
-        const [folders, total] = await this.prisma.$transaction([
-          this.prisma.folder.findMany({
-            where,
-            skip,
-            take: limit,
-            orderBy: { name: 'asc' },
-          }),
-          this.prisma.folder.count({ where }),
-        ]);
+    const [folders, total] = await this.prisma.$transaction([
+      this.prisma.folder.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.folder.count({ where }),
+    ]);
 
-        return {
-          folders,
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        };
-      },
-      'Error while fetching folders',
-      true,
-    );
+    return {
+      folders,
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    };
   }
 
   async renameFolder(id: string, name: string): Promise<IFolder> {
-    return handleRequest(
-      async () => {
-        const folder = await this.prisma.folder.findUnique({
-          where: { id },
-          select: { name: true },
-        });
+    const folder = await this.prisma.folder.findUnique({
+      where: { id },
+      select: { name: true },
+    });
 
-        if (!folder)
-          throw new NotFoundException(`Folder with id ${id} not found`);
+    if (!folder) throw new NotFoundException(`Folder with id ${id} not found`);
 
-        return await this.prisma.folder.update({
-          where: { id },
-          data: { name },
-        });
-      },
-      'Error while renaming folder',
-      true,
-    );
+    return await this.prisma.folder.update({
+      where: { id },
+      data: { name },
+    });
   }
 
   async deleteFolder(id: string): Promise<IFolder> {
-    return handleRequest(
-      async () => await this.prisma.folder.delete({ where: { id } }),
-      'Error while deleting folder',
-      true,
-    );
+    return await this.prisma.folder.delete({ where: { id } });
   }
 
   private buildFolderWhereInput(
@@ -107,7 +83,6 @@ export class FolderService {
   ): Prisma.FolderWhereInput {
     const { userId, name } = payload;
     return Object.assign(
-      {},
       { userId },
       name && {
         name: {

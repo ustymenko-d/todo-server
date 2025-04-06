@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Patch,
   Post,
@@ -20,7 +21,7 @@ import {
   IGetFolderResponse,
 } from './folder.types';
 import { IJwtUser } from 'src/common/common.types';
-import { handleRequest } from 'src/common/utils/request-handler.util';
+import { handleRequest } from 'src/common/utils/requestHandler';
 
 @Controller('folder')
 export class FolderController {
@@ -33,17 +34,21 @@ export class FolderController {
     req: { user: IJwtUser },
     @Body() body: FolderNameDto,
   ): Promise<IFolderResponse> {
-    return handleRequest(async () => {
-      const payload = {
-        name: body.name,
-        userId: req.user.userId,
-      };
-      return {
-        success: true,
-        message: 'Folder create successfully',
-        folder: await this.folderService.createFolder(payload),
-      };
-    }, 'Eror while creating folder');
+    return handleRequest(
+      async () => {
+        const payload = {
+          name: body.name,
+          userId: req.user.userId,
+        };
+        return {
+          success: true,
+          message: 'Folder create successfully',
+          folder: await this.folderService.createFolder(payload),
+        };
+      },
+      'Eror while creating folder',
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -53,16 +58,20 @@ export class FolderController {
     req: { user: IJwtUser },
     @Query() query: IGetFolderRequest,
   ): Promise<IGetFolderResponse> {
-    return handleRequest(async () => {
-      const { page, limit, name } = query;
-      const payload = {
-        name,
-        page: +page,
-        limit: +limit,
-        userId: req.user.userId,
-      };
-      return await this.folderService.getFolders(payload);
-    }, 'Eror while fetching folder');
+    return handleRequest(
+      async () => {
+        const { page, limit, name } = query;
+        const payload = {
+          name,
+          page: +page,
+          limit: +limit,
+          userId: req.user.userId,
+        };
+        return await this.folderService.getFolders(payload);
+      },
+      'Eror while fetching folder',
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
@@ -71,24 +80,34 @@ export class FolderController {
     @Param() { folderId }: FolderIdDto,
     @Body() { name }: FolderNameDto,
   ): Promise<IFolderResponse> {
-    return handleRequest(async () => {
-      return {
-        success: true,
-        message: 'Folder rename successfully',
-        folder: await this.folderService.renameFolder(folderId, name),
-      };
-    }, 'Eror while renaminging folder');
+    return handleRequest(
+      async () => {
+        return {
+          success: true,
+          message: 'Folder rename successfully',
+          folder: await this.folderService.renameFolder(folderId, name),
+        };
+      },
+      'Eror while renaminging folder',
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
   @Delete(':folderId')
   async delete(@Param() { folderId }: FolderIdDto): Promise<IFolderResponse> {
-    return handleRequest(async () => {
-      return {
-        success: true,
-        message: 'Folder deleted successfully',
-        folder: await this.folderService.deleteFolder(folderId),
-      };
-    }, 'Eror while deleting folder');
+    return handleRequest(
+      async () => {
+        return {
+          success: true,
+          message: 'Folder deleted successfully',
+          folder: await this.folderService.deleteFolder(folderId),
+        };
+      },
+      'Eror while deleting folder',
+      this.logger,
+    );
   }
+
+  private readonly logger = new Logger(FolderController.name);
 }

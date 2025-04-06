@@ -1,5 +1,5 @@
-import { Body, Controller, Patch, Post, Query } from '@nestjs/common';
-import { handleRequest } from 'src/common/utils/request-handler.util';
+import { Body, Controller, Logger, Patch, Post, Query } from '@nestjs/common';
+import { handleRequest } from 'src/common/utils/requestHandler';
 import { EmailBaseDto, PasswordBaseDto } from '../auth.dto';
 import { IResponseStatus } from 'src/common/common.types';
 import { PasswordService } from './password.service';
@@ -12,13 +12,17 @@ export class PasswordController {
   async forgotPassword(
     @Body() { email }: EmailBaseDto,
   ): Promise<IResponseStatus> {
-    return handleRequest(async () => {
-      await this.passwordService.sendResetPasswordEmail(email);
-      return {
-        success: true,
-        message: 'Password reset email sent successfully',
-      };
-    }, 'Error while sending reset password email');
+    return handleRequest(
+      async () => {
+        await this.passwordService.sendResetPasswordEmail(email);
+        return {
+          success: true,
+          message: 'Password reset email sent successfully',
+        };
+      },
+      'Error while sending reset password email',
+      this.logger,
+    );
   }
 
   @Patch('reset-password')
@@ -26,9 +30,15 @@ export class PasswordController {
     @Query('resetToken') resetToken: string,
     @Body() { password }: PasswordBaseDto,
   ): Promise<IResponseStatus> {
-    return handleRequest(async () => {
-      await this.passwordService.resetPassword(resetToken, password);
-      return { success: true, message: 'Password updated successfully' };
-    }, 'Reset password error');
+    return handleRequest(
+      async () => {
+        await this.passwordService.resetPassword(resetToken, password);
+        return { success: true, message: 'Password updated successfully' };
+      },
+      'Reset password error',
+      this.logger,
+    );
   }
+
+  private readonly logger = new Logger(PasswordController.name);
 }

@@ -12,7 +12,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/auth/mail/mail.service';
 import { PasswordService } from 'src/auth/password/password.service';
 import { TokensService } from 'src/auth/tokens/tokens.service';
-import { handleRequest } from 'src/common/utils/request-handler.util';
+import { ClientMeta } from 'src/common/utils/getClientMeta';
 
 @Injectable()
 export class AuthService {
@@ -23,85 +23,68 @@ export class AuthService {
     private readonly passwordService: PasswordService,
   ) {}
 
-  async signup(email: string, password: string): Promise<IAuthData> {
-    return handleRequest(
-      async () => {
-        const verificationToken = uuidv4();
-        const hashedPassword =
-          await this.passwordService.hashPassword(password);
-        const user = await this.createUser(
-          email,
-          hashedPassword,
-          verificationToken,
-        );
-        await this.mailService.sendVerificationEmail(email, verificationToken);
-        return {
-          accessToken: this.tokenService.createAccessToken(user),
-          refreshToken: await this.tokenService.createRefreshToken(user.id),
-          userInfo: this.createUserInfo(user),
-        };
-      },
-      'Signup failed',
-      true,
+  async signup(
+    email: string,
+    password: string,
+    meta: ClientMeta,
+  ): Promise<IAuthData> {
+    const verificationToken = uuidv4();
+    const hashedPassword = await this.passwordService.hashPassword(password);
+    const user = await this.createUser(
+      email,
+      hashedPassword,
+      verificationToken,
     );
+    await this.mailService.sendVerificationEmail(email, verificationToken);
+    return {
+      accessToken: this.tokenService.createAccessToken(user),
+      refreshToken: await this.tokenService.createRefreshToken(user.id, meta),
+      userInfo: this.createUserInfo(user),
+    };
   }
 
   async verifyEmail(verificationToken: string): Promise<void> {
-    return handleRequest(
-      async () => {
-        const { id } = await this.findUserBy({ verificationToken });
-        await this.prisma.user.update({
-          where: { id },
-          data: { isVerified: true, verificationToken: null },
-        });
-      },
-      'Email verification failed',
-      true,
-    );
+    const { id } = await this.findUserBy({ verificationToken });
+    await this.prisma.user.update({
+      where: { id },
+      data: { isVerified: true, verificationToken: null },
+    });
   }
 
-  async login(email: string, password: string): Promise<IAuthData> {
-    return handleRequest(
-      async () => {
-        const user = await this.findUserBy({ email });
-        const passwordVerified = await this.passwordService.comparePasswords(
-          password,
-          user.password,
-        );
-
-        if (!passwordVerified)
-          throw new UnauthorizedException('Invalid credentials');
-
-        return {
-          accessToken: this.tokenService.createAccessToken(user),
-          refreshToken: await this.tokenService.createRefreshToken(user.id),
-          userInfo: this.createUserInfo(user),
-        };
-      },
-      'Login failed',
-      true,
+  async login(
+    email: string,
+    password: string,
+    meta: ClientMeta,
+  ): Promise<IAuthData> {
+    const user = await this.findUserBy({ email });
+    const passwordVerified = await this.passwordService.comparePasswords(
+      password,
+      user.password,
     );
+
+    if (!passwordVerified)
+      throw new UnauthorizedException('Invalid credentials');
+
+    await this.tokenService.revokePreviousTokens(user.id, meta);
+
+    return {
+      accessToken: this.tokenService.createAccessToken(user),
+      refreshToken: await this.tokenService.createRefreshToken(user.id, meta),
+      userInfo: this.createUserInfo(user),
+    };
+  }
+
+  async logout(id: string, meta: ClientMeta): Promise<void> {
+    await this.tokenService.revokePreviousTokens(id, meta);
   }
 
   async getAccountInfo(id: string): Promise<IUserInfo> {
-    return handleRequest(
-      async () => {
-        const user = await this.findUserBy({ id });
-        return this.createUserInfo(user);
-      },
-      'Get user info failed',
-      true,
-    );
+    const user = await this.findUserBy({ id });
+    return this.createUserInfo(user);
   }
 
   async deleteUser(id: string): Promise<void> {
-    return handleRequest(
-      async () => {
-        await this.prisma.user.delete({ where: { id } });
-      },
-      'Delete user failed',
-      true,
-    );
+    await this.prisma.user.delete({ where: { id } });
   }
 
   private async createUser(

@@ -2,7 +2,6 @@ import {
   forwardRef,
   Inject,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,13 +11,11 @@ import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { ITokenPair, IUser } from 'src/auth/auth.types';
 import { IJwtUser } from '../../common/common.types';
-import { handleRequest } from 'src/common/utils/request-handler.util';
 import { AuthService } from '../auth.service';
+import { ClientMeta } from 'src/common/utils/getClientMeta';
 
 @Injectable()
 export class TokensService {
-  private readonly logger = new Logger(TokensService.name);
-
   constructor(
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
@@ -27,65 +24,62 @@ export class TokensService {
     private readonly prisma: PrismaService,
   ) {}
 
-  private logAndThrowError(message: string, error: any) {
-    this.logger.error(message, error.stack);
-    throw error;
-  }
-
   createAccessToken(user: IUser): string {
-    try {
-      const payload = {
-        email: user.email,
-        sub: user.id,
-        tokenVersion: user.tokenVersion,
-      };
-      return this.jwtService.sign(payload);
-    } catch (error) {
-      this.logAndThrowError('Failed to create access token', error);
-    }
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      tokenVersion: user.tokenVersion,
+    };
+    return this.jwtService.sign(payload);
   }
 
-  async createRefreshToken(userId: string): Promise<string> {
-    try {
-      const token = uuidv4();
-      const hashedToken = await bcrypt.hash(token, 10);
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 12);
+  async createRefreshToken(userId: string, meta: ClientMeta): Promise<string> {
+    const token = uuidv4();
+    const hashedToken = await bcrypt.hash(token, 10);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 12);
+    const { userAgent, ipAddress } = meta;
 
-      await this.prisma.refreshToken.create({
-        data: {
-          userId,
-          token: hashedToken,
-          expiresAt,
-        },
-      });
-
-      return token;
-    } catch (error) {
-      this.logAndThrowError('Failed to create refresh token', error);
-    }
-  }
-
-  async refreshTokens(id: string, refreshToken: string): Promise<ITokenPair> {
-    return handleRequest(
-      async () => {
-        await this.validateRefreshToken(id, refreshToken);
-        const user = await this.authService.findUserBy({ id });
-        const newAccessToken = this.createAccessToken(user);
-        const newRefreshToken = await this.createRefreshToken(id);
-        return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        token: hashedToken,
+        expiresAt,
+        userAgent,
+        ipAddress,
       },
-      'Failed to refresh tokens',
-      true,
-    );
+    });
+
+    return token;
   }
 
-  async validateRefreshToken(
+  async refreshTokens(
+    id: string,
+    refreshToken: string,
+    meta: ClientMeta,
+  ): Promise<ITokenPair> {
+    await this.verifyRefreshToken(id, refreshToken, meta);
+    const user = await this.authService.findUserBy({ id });
+    const newAccessToken = this.createAccessToken(user);
+    await this.revokePreviousTokens(id, meta);
+    const newRefreshToken = await this.createRefreshToken(id, meta);
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  }
+
+  async verifyRefreshToken(
     userId: string,
     refreshToken: string,
+    meta: ClientMeta,
   ): Promise<void> {
+    const { userAgent, ipAddress } = meta;
     const storedRefreshToken = await this.prisma.refreshToken.findFirst({
-      where: { userId, revoked: false, expiresAt: { gt: new Date() } },
+      where: {
+        userId,
+        revoked: false,
+        expiresAt: { gt: new Date() },
+        userAgent,
+        ipAddress,
+      },
     });
 
     if (!storedRefreshToken)
@@ -100,49 +94,39 @@ export class TokensService {
       throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
-  async revokePreviousTokens(userId: string): Promise<void> {
-    try {
-      await this.prisma.refreshToken.updateMany({
-        where: { userId, revoked: false },
-        data: { revoked: true },
-      });
-    } catch (error) {
-      this.logAndThrowError('Failed to revoke previous tokens', error);
-    }
+  async revokePreviousTokens(userId: string, meta?: ClientMeta): Promise<void> {
+    const { userAgent, ipAddress } = meta || {};
+    const where = Object.assign(
+      { userId, revoked: false },
+      userAgent && { userAgent },
+      ipAddress && { ipAddress },
+    );
+    await this.prisma.refreshToken.updateMany({
+      where,
+      data: { revoked: true },
+    });
   }
 
   createResetPasswordToken(user: IUser): string {
-    try {
-      return this.jwtService.sign(
-        { userId: user.id, tokenVersion: user.tokenVersion },
-        {
-          secret: this.configService.get<string>('JWT_RESET_SECRET'),
-          expiresIn: '30m',
-        },
-      );
-    } catch (error) {
-      this.logAndThrowError('Failed to create reset password token', error);
-    }
+    return this.jwtService.sign(
+      { userId: user.id, tokenVersion: user.tokenVersion },
+      {
+        secret: this.configService.get<string>('JWT_RESET_SECRET'),
+        expiresIn: '30m',
+      },
+    );
   }
 
   verifyResetPasswordToken(resetToken: string): IJwtUser {
-    try {
-      return this.jwtService.verify(resetToken, {
-        secret: this.configService.get<string>('JWT_RESET_SECRET'),
-      });
-    } catch (error) {
-      this.logAndThrowError('Failed to verify reset password token', error);
-    }
+    return this.jwtService.verify(resetToken, {
+      secret: this.configService.get<string>('JWT_RESET_SECRET'),
+    });
   }
 
   extractUserIdFromToken(accessToken: string): string {
-    try {
-      const decodedToken = this.jwtService.decode(accessToken);
-      const userId = decodedToken?.sub;
-      if (!userId) throw new UnauthorizedException('Missing user id');
-      return userId;
-    } catch {
-      throw new UnauthorizedException('Error during access token decoding');
-    }
+    const decodedToken = this.jwtService.decode(accessToken);
+    const userId = decodedToken?.sub;
+    if (!userId) throw new UnauthorizedException('Missing user id');
+    return userId;
   }
 }

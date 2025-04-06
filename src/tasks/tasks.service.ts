@@ -9,137 +9,108 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetTasksPayloadDto, TaskDto } from './tasks.dto';
 import { ICreateTaskPayload, ITask, ITasksData } from './task.types';
-import { handleRequest } from 'src/common/utils/request-handler.util';
 
 @Injectable()
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
   async getTasks(payload: GetTasksPayloadDto): Promise<ITasksData> {
-    return await handleRequest(
-      async () => {
-        const { page, limit } = payload;
-        const skip = (page - 1) * limit;
-        const where = this.buildTaskWhereInput(payload);
+    const { page, limit } = payload;
+    const skip = (page - 1) * limit;
+    const where = this.buildTaskWhereInput(payload);
 
-        const [tasks, total] = await this.prisma.$transaction([
-          this.prisma.task.findMany({
-            where,
-            skip,
-            take: limit,
-            orderBy: { createdAt: 'desc' },
-            select: { id: true },
-          }),
-          this.prisma.task.count({ where }),
-        ]);
+    const [tasks, total] = await this.prisma.$transaction([
+      this.prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
 
-        const tasksWithSubtasks = await Promise.all(
-          tasks.map((task) => this.getTaskWithSubtasks(task.id)),
-        );
-
-        return {
-          tasks: tasksWithSubtasks,
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        };
-      },
-      'Error while fetching tasks',
-      true,
+    const tasksWithSubtasks = await Promise.all(
+      tasks.map((task) => this.getTaskWithSubtasks(task.id)),
     );
+
+    return {
+      tasks: tasksWithSubtasks,
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    };
   }
 
   async createTask(payload: ICreateTaskPayload): Promise<ITask> {
-    return await handleRequest(
-      async () => {
-        const { userId, parentTaskId, folderId } = payload;
-        await this.validateTaskCreation(userId);
+    const { userId, parentTaskId, folderId } = payload;
+    await this.validateTaskCreation(userId);
 
-        if (parentTaskId) {
-          await this.getTaskById(parentTaskId);
-          const depth = await this.getTaskDepth(parentTaskId);
-          if (depth >= 5)
-            throw new UnprocessableEntityException(
-              'Maximum task depth of 5 reached',
-            );
-          await this.subtaskCountValidation(parentTaskId);
-        }
+    if (parentTaskId) {
+      await this.getTaskById(parentTaskId);
+      const depth = await this.getTaskDepth(parentTaskId);
+      if (depth >= 5)
+        throw new UnprocessableEntityException(
+          'Maximum task depth of 5 reached',
+        );
+      await this.subtaskCountValidation(parentTaskId);
+    }
 
-        if (folderId) await this.folderIdValidation(folderId, userId);
+    if (folderId) await this.folderIdValidation(folderId, userId);
 
-        return await this.prisma.task.create({
-          data: {
-            ...payload,
-            id: uuidv4(),
-            createdAt: new Date(),
-          },
-        });
+    return await this.prisma.task.create({
+      data: {
+        ...payload,
+        id: uuidv4(),
+        createdAt: new Date(),
       },
-      'Error while creating a task',
-      true,
-    );
+    });
   }
 
   async editTask(payload: TaskDto): Promise<ITask> {
-    return await handleRequest(
-      async () => {
-        const { id, parentTaskId, folderId, userId } = payload;
+    const { id, parentTaskId, folderId, userId } = payload;
 
-        if (parentTaskId) {
-          const allSubtaskIds = await this.getAllSubtaskIds(id);
+    if (parentTaskId) {
+      const allSubtaskIds = await this.getAllSubtaskIds(id);
 
-          if (allSubtaskIds.includes(parentTaskId))
-            throw new UnprocessableEntityException(
-              'A parent task cannot be moved down the hierarchy',
-            );
+      if (allSubtaskIds.includes(parentTaskId))
+        throw new UnprocessableEntityException(
+          'A parent task cannot be moved down the hierarchy',
+        );
 
-          await this.subtaskCountValidation(parentTaskId);
+      await this.subtaskCountValidation(parentTaskId);
 
-          const targetDepth = await this.getTaskDepth(parentTaskId);
-          const currentMaxDepth = await this.getMaxSubtaskDepth(id, 1);
-          if (targetDepth + currentMaxDepth > 5)
-            throw new UnprocessableEntityException(
-              'Moving this task would exceed the maximum depth of 5',
-            );
-        }
+      const targetDepth = await this.getTaskDepth(parentTaskId);
+      const currentMaxDepth = await this.getMaxSubtaskDepth(id, 1);
+      if (targetDepth + currentMaxDepth > 5)
+        throw new UnprocessableEntityException(
+          'Moving this task would exceed the maximum depth of 5',
+        );
+    }
 
-        if (folderId) await this.folderIdValidation(folderId, userId);
+    if (folderId) await this.folderIdValidation(folderId, userId);
 
-        return await this.prisma.task.update({
-          where: { id },
-          data: { ...payload },
-        });
-      },
-      'Error while editing a task',
-      true,
-    );
+    return await this.prisma.task.update({
+      where: { id },
+      data: { ...payload },
+    });
   }
 
   async toggleStatus(id: string): Promise<ITask> {
-    return await handleRequest(
-      async () => {
-        const task = await this.prisma.task.findUniqueOrThrow({
-          where: { id },
-          select: { completed: true },
-        });
+    const task = await this.prisma.task.findUniqueOrThrow({
+      where: { id },
+      select: { completed: true },
+    });
 
-        return await this.prisma.task.update({
-          where: { id },
-          data: { completed: !task.completed },
-        });
-      },
-      'Error while changing task status',
-      true,
-    );
+    return await this.prisma.task.update({
+      where: { id },
+      data: { completed: !task.completed },
+    });
   }
 
   async deleteTask(id: string): Promise<ITask> {
-    return await handleRequest(
-      async () => this.prisma.task.delete({ where: { id } }),
-      'Error while deleting a task',
-      true,
-    );
+    return this.prisma.task.delete({ where: { id } });
   }
 
   private async isUserVerified(userId: string): Promise<boolean> {

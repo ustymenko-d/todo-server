@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Logger,
   Param,
   Patch,
   Post,
@@ -20,7 +21,7 @@ import {
 } from './tasks.dto';
 import { IJwtUser } from 'src/common/common.types';
 import { IGetTasksResponse, ITaskResponse } from './task.types';
-import { handleRequest } from 'src/common/utils/request-handler.util';
+import { handleRequest } from 'src/common/utils/requestHandler';
 
 @Controller('tasks')
 export class TasksController {
@@ -32,16 +33,20 @@ export class TasksController {
     @Req() req: { user: IJwtUser },
     @Body() body: GetTasksRequestDto,
   ): Promise<IGetTasksResponse> {
-    return handleRequest(async () => {
-      const { userId } = req.user;
-      return {
-        success: true,
-        data: await this.tasksService.getTasks({
-          ...body,
-          userId,
-        }),
-      };
-    }, 'Error while fetching tasks');
+    return handleRequest(
+      async () => {
+        const { userId } = req.user;
+        return {
+          success: true,
+          data: await this.tasksService.getTasks({
+            ...body,
+            userId,
+          }),
+        };
+      },
+      'Error while fetching tasks',
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -50,45 +55,63 @@ export class TasksController {
     @Req() req: { user: IJwtUser },
     @Body() body: TaskBaseDto,
   ): Promise<ITaskResponse> {
-    return handleRequest(async () => {
-      const { userId } = req.user;
-      return {
-        success: true,
-        task: await this.tasksService.createTask({
-          ...body,
-          userId,
-        }),
-      };
-    }, 'Error while creating a task');
+    return handleRequest(
+      async () => {
+        const { userId } = req.user;
+        return {
+          success: true,
+          task: await this.tasksService.createTask({
+            ...body,
+            userId,
+          }),
+        };
+      },
+      'Error while creating a task',
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Put()
   async edit(@Body() body: TaskDto): Promise<ITaskResponse> {
-    return handleRequest(async () => {
-      return { success: true, task: await this.tasksService.editTask(body) };
-    }, 'Error while editing a task');
+    return handleRequest(
+      async () => {
+        return { success: true, task: await this.tasksService.editTask(body) };
+      },
+      'Error while editing a task',
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Patch(':taskId')
   async toggleStatus(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
-    return handleRequest(async () => {
-      return {
-        success: true,
-        task: await this.tasksService.toggleStatus(taskId),
-      };
-    }, `Error when change status of the task (${taskId})`);
+    return handleRequest(
+      async () => {
+        return {
+          success: true,
+          task: await this.tasksService.toggleStatus(taskId),
+        };
+      },
+      `Error when change status of the task (${taskId})`,
+      this.logger,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
   async delete(@Param() { taskId }: TaskIdDto): Promise<ITaskResponse> {
-    return handleRequest(async () => {
-      return {
-        success: true,
-        task: await this.tasksService.deleteTask(taskId),
-      };
-    }, 'Error when deleting a task');
+    return handleRequest(
+      async () => {
+        return {
+          success: true,
+          task: await this.tasksService.deleteTask(taskId),
+        };
+      },
+      'Error when deleting a task',
+      this.logger,
+    );
   }
+
+  private readonly logger = new Logger(TasksController.name);
 }
