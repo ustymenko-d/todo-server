@@ -12,7 +12,6 @@ import { TokensService } from './tokens.service';
 import { CookiesService } from '../cookies/cookies.service';
 import { handleRequest } from 'src/common/utils/requestHandler';
 import { IResponseStatus } from 'src/common/common.types';
-import { getClientMeta } from 'src/common/utils/getClientMeta';
 
 @Controller('auth/tokens')
 export class TokensController {
@@ -29,16 +28,20 @@ export class TokensController {
   ): Promise<IResponseStatus> {
     return handleRequest(
       async () => {
-        const meta = getClientMeta(req);
         const { access_token: accessToken, refresh_token: refreshToken } =
           req.cookies;
 
         if (!accessToken || !refreshToken)
           throw new UnauthorizedException('Missing access or refresh token');
 
-        const userId = this.tokenService.extractUserIdFromToken(accessToken);
+        const { userId, sessionId } =
+          this.tokenService.decodeAccessToken(accessToken);
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-          await this.tokenService.refreshTokens(userId, refreshToken, meta);
+          await this.tokenService.refreshTokens(
+            userId,
+            refreshToken,
+            sessionId,
+          );
 
         this.cookiesService.setAuthCookies(
           res,

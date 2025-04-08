@@ -8,11 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
-import * as bcrypt from 'bcrypt';
 import { ITokenPair, IUser } from 'src/auth/auth.types';
 import { IJwtUser } from '../../common/common.types';
 import { AuthService } from '../auth.service';
-import { ClientMeta } from 'src/common/utils/getClientMeta';
+import HashHandler from 'src/common/utils/hashHandler';
 
 @Injectable()
 export class TokensService {
@@ -24,29 +23,29 @@ export class TokensService {
     private readonly prisma: PrismaService,
   ) {}
 
-  createAccessToken(user: IUser): string {
+  createAccessToken(user: IUser, sessionId: string): string {
+    const { email, id: sub, tokenVersion } = user;
     const payload = {
-      email: user.email,
-      sub: user.id,
-      tokenVersion: user.tokenVersion,
+      email,
+      sub,
+      tokenVersion: tokenVersion,
+      sessionId,
     };
     return this.jwtService.sign(payload);
   }
 
-  async createRefreshToken(userId: string, meta: ClientMeta): Promise<string> {
+  async createRefreshToken(userId: string, sessionId: string): Promise<string> {
     const token = uuidv4();
-    const hashedToken = await bcrypt.hash(token, 10);
+    const hashedToken = await HashHandler.hashString(token);
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 12);
-    const { userAgent, ipAddress } = meta;
 
     await this.prisma.refreshToken.create({
       data: {
         userId,
         token: hashedToken,
         expiresAt,
-        userAgent,
-        ipAddress,
+        sessionId,
       },
     });
 
@@ -54,55 +53,43 @@ export class TokensService {
   }
 
   async refreshTokens(
-    id: string,
+    userId: string,
     refreshToken: string,
-    meta: ClientMeta,
+    sessionId: string,
   ): Promise<ITokenPair> {
-    await this.verifyRefreshToken(id, refreshToken, meta);
-    const user = await this.authService.findUserBy({ id });
-    const newAccessToken = this.createAccessToken(user);
-    await this.revokePreviousTokens(id, meta);
-    const newRefreshToken = await this.createRefreshToken(id, meta);
+    await this.verifyRefreshToken(userId, refreshToken, sessionId);
+    const user = await this.authService.findUserBy({ id: userId });
+    const newAccessToken = this.createAccessToken(user, sessionId);
+    await this.revokePreviousTokens(userId, sessionId);
+    const newRefreshToken = await this.createRefreshToken(userId, sessionId);
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
   async verifyRefreshToken(
     userId: string,
     refreshToken: string,
-    meta: ClientMeta,
+    sessionId: string,
   ): Promise<void> {
-    const { userAgent, ipAddress } = meta;
-    const storedRefreshToken = await this.prisma.refreshToken.findFirst({
+    const { token } = await this.prisma.refreshToken.findFirst({
       where: {
         userId,
+        sessionId,
         revoked: false,
         expiresAt: { gt: new Date() },
-        userAgent,
-        ipAddress,
       },
     });
 
-    if (!storedRefreshToken)
-      throw new UnauthorizedException('No refresh token found');
+    if (!token) throw new UnauthorizedException('No refresh token found');
 
-    const isValid = await bcrypt.compare(
-      refreshToken,
-      storedRefreshToken.token,
-    );
+    const isTokenValid = await HashHandler.compareString(refreshToken, token);
 
-    if (!isValid)
+    if (!isTokenValid)
       throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
-  async revokePreviousTokens(userId: string, meta?: ClientMeta): Promise<void> {
-    const { userAgent, ipAddress } = meta || {};
-    const where = Object.assign(
-      { userId, revoked: false },
-      userAgent && { userAgent },
-      ipAddress && { ipAddress },
-    );
+  async revokePreviousTokens(userId: string, sessionId: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
-      where,
+      where: { userId, sessionId, revoked: false },
       data: { revoked: true },
     });
   }
@@ -123,10 +110,12 @@ export class TokensService {
     });
   }
 
-  extractUserIdFromToken(accessToken: string): string {
+  decodeAccessToken(accessToken: string): {
+    userId: string;
+    sessionId: string;
+  } {
     const decodedToken = this.jwtService.decode(accessToken);
-    const userId = decodedToken?.sub;
-    if (!userId) throw new UnauthorizedException('Missing user id');
-    return userId;
+    const { sub: userId, sessionId } = decodedToken;
+    return { userId, sessionId };
   }
 }

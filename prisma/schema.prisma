@@ -24,14 +24,12 @@ model User {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  token     String   @id
   userId    String
-  token     String
+  sessionId String
   createdAt DateTime @default(now())
   expiresAt DateTime
   revoked   Boolean  @default(false)
-  userAgent String   @default("Unknown")
-  ipAddress String   @default("Unknown")
 
   user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }

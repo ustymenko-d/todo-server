@@ -1,9 +1,9 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { TokensService } from '../tokens/tokens.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from '../auth.service';
+import HashHandler from 'src/common/utils/hashHandler';
 
 @Injectable()
 export class PasswordService {
@@ -24,26 +24,14 @@ export class PasswordService {
   async resetPassword(resetToken: string, password: string): Promise<void> {
     const { userId, tokenVersion } =
       this.tokenService.verifyResetPasswordToken(resetToken);
-    const { id } = await this.authService.findUserBy({
-      id: userId,
-      tokenVersion,
-    });
-    const hashedPassword = await this.hashPassword(password);
-    await this.tokenService.revokePreviousTokens(id);
+    const hashedPassword = await HashHandler.hashString(password);
     await this.prisma.user.update({
-      where: { id },
+      where: { id: userId, tokenVersion },
       data: { password: hashedPassword, tokenVersion: { increment: 1 } },
     });
-  }
-
-  async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 10);
-  }
-
-  async comparePasswords(
-    password: string,
-    hashedPassword: string,
-  ): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword);
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true },
+    });
   }
 }

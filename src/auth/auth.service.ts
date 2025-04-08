@@ -10,9 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { IAuthData, IUser, IUserInfo, TFindUserByQuery } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { MailService } from 'src/auth/mail/mail.service';
-import { PasswordService } from 'src/auth/password/password.service';
 import { TokensService } from 'src/auth/tokens/tokens.service';
-import { ClientMeta } from 'src/common/utils/getClientMeta';
+import HashHandler from 'src/common/utils/hashHandler';
 
 @Injectable()
 export class AuthService {
@@ -20,16 +19,12 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokensService,
     private readonly mailService: MailService,
-    private readonly passwordService: PasswordService,
   ) {}
 
-  async signup(
-    email: string,
-    password: string,
-    meta: ClientMeta,
-  ): Promise<IAuthData> {
+  async signup(email: string, password: string): Promise<IAuthData> {
+    const sessionId = uuidv4();
     const verificationToken = uuidv4();
-    const hashedPassword = await this.passwordService.hashPassword(password);
+    const hashedPassword = await HashHandler.hashString(password);
     const user = await this.createUser(
       email,
       hashedPassword,
@@ -37,27 +32,25 @@ export class AuthService {
     );
     await this.mailService.sendVerificationEmail(email, verificationToken);
     return {
-      accessToken: this.tokenService.createAccessToken(user),
-      refreshToken: await this.tokenService.createRefreshToken(user.id, meta),
+      accessToken: this.tokenService.createAccessToken(user, sessionId),
+      refreshToken: await this.tokenService.createRefreshToken(
+        user.id,
+        sessionId,
+      ),
       userInfo: this.createUserInfo(user),
     };
   }
 
   async verifyEmail(verificationToken: string): Promise<void> {
-    const { id } = await this.findUserBy({ verificationToken });
     await this.prisma.user.update({
-      where: { id },
+      where: { verificationToken },
       data: { isVerified: true, verificationToken: null },
     });
   }
 
-  async login(
-    email: string,
-    password: string,
-    meta: ClientMeta,
-  ): Promise<IAuthData> {
+  async login(email: string, password: string): Promise<IAuthData> {
     const user = await this.findUserBy({ email });
-    const passwordVerified = await this.passwordService.comparePasswords(
+    const passwordVerified = await HashHandler.compareString(
       password,
       user.password,
     );
@@ -65,17 +58,19 @@ export class AuthService {
     if (!passwordVerified)
       throw new UnauthorizedException('Invalid credentials');
 
-    await this.tokenService.revokePreviousTokens(user.id, meta);
-
+    const sessionId = uuidv4();
     return {
-      accessToken: this.tokenService.createAccessToken(user),
-      refreshToken: await this.tokenService.createRefreshToken(user.id, meta),
+      accessToken: this.tokenService.createAccessToken(user, sessionId),
+      refreshToken: await this.tokenService.createRefreshToken(
+        user.id,
+        sessionId,
+      ),
       userInfo: this.createUserInfo(user),
     };
   }
 
-  async logout(id: string, meta: ClientMeta): Promise<void> {
-    await this.tokenService.revokePreviousTokens(id, meta);
+  async logout(id: string, sessionId: string): Promise<void> {
+    await this.tokenService.revokePreviousTokens(id, sessionId);
   }
 
   async getAccountInfo(id: string): Promise<IUserInfo> {

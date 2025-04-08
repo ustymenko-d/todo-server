@@ -18,7 +18,6 @@ import { CookiesService } from './cookies/cookies.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 import { IAuthResponse, IUserInfo } from './auth.types';
 import { handleRequest } from 'src/common/utils/requestHandler';
-import { getClientMeta } from 'src/common/utils/getClientMeta';
 
 @Controller('auth')
 export class AuthController {
@@ -35,10 +34,9 @@ export class AuthController {
   ): Promise<IAuthResponse> {
     return handleRequest(
       async () => {
-        const meta = getClientMeta(req);
         const { email, password, rememberMe } = body;
         const { accessToken, refreshToken, userInfo } =
-          await this.authService.signup(email, password, meta);
+          await this.authService.signup(email, password);
         this.cookiesService.setAuthCookies(
           res,
           accessToken,
@@ -78,10 +76,9 @@ export class AuthController {
   ): Promise<IAuthResponse> {
     return handleRequest(
       async () => {
-        const meta = getClientMeta(req);
         const { email, password, rememberMe } = body;
         const { accessToken, refreshToken, userInfo } =
-          await this.authService.login(email, password, meta);
+          await this.authService.login(email, password);
         this.cookiesService.setAuthCookies(
           res,
           accessToken,
@@ -115,9 +112,8 @@ export class AuthController {
   ): Promise<IResponseStatus> {
     return handleRequest(
       async () => {
-        const { userId } = req.user;
-        const meta = getClientMeta(req);
-        await this.authService.logout(userId, meta);
+        const { userId, sessionId } = req.user;
+        await this.authService.logout(userId, sessionId);
         this.cookiesService.clearAuthCookies(res);
         return { success: true, message: 'Logout successful' };
       },
