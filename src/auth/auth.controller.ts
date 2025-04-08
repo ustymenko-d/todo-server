@@ -28,7 +28,6 @@ export class AuthController {
 
   @Post('signup')
   async signup(
-    @Req() req: Request,
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<IAuthResponse> {
@@ -70,7 +69,6 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Req() req: Request,
     @Body() body: AuthDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<IAuthResponse> {
