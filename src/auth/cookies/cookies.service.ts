@@ -28,13 +28,13 @@ export class CookiesService {
       res,
       'access_token',
       accessToken,
-      rememberMe ? CookiesService.EXPIRATION_TIMES.accessToken : undefined,
+      rememberMe ? CookiesService.EXPIRATION_TIMES : undefined,
     );
     this.setCookie(
       res,
       'refresh_token',
       refreshToken,
-      rememberMe ? CookiesService.EXPIRATION_TIMES.refreshToken : undefined,
+      rememberMe ? CookiesService.EXPIRATION_TIMES : undefined,
     );
   }
 
@@ -59,8 +59,5 @@ export class CookiesService {
     res.clearCookie(name, this.COOKIE_OPTIONS);
   }
 
-  private static readonly EXPIRATION_TIMES = {
-    accessToken: 30 * 60 * 1000, // 30 minutes
-    refreshToken: 12 * 60 * 60 * 1000, // 12 hours
-  };
+  private static readonly EXPIRATION_TIMES = 12 * 60 * 60 * 1000;
 }
