@@ -91,19 +91,19 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Get('check')
-  async checkAuth(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
+  @Get('account-info')
+  async getAccountInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
     return handleRequest(
       async () => {
         return await this.authService.getAccountInfo(req.user.userId);
       },
-      'Get user info error',
+      'Get account info error',
       this.logger,
     );
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Post('logout')
+  @Get('logout')
   async logout(
     @Req() req: Request & { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
