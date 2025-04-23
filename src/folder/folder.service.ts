@@ -33,6 +33,9 @@ export class FolderService {
         'Unverified users cannot create more than three folders',
       );
 
+    if (isVerified && userFoldersCount >= 25)
+      throw new ForbiddenException('You cannot create more than 25 folders');
+
     return await this.prisma.folder.create({ data: payload });
   }
 
