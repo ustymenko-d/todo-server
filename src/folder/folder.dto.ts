@@ -16,9 +16,9 @@ export class FolderNameDto {
   @MaxLength(20, {
     message: 'The folder name must not exceed 20 characters',
   })
-  @Matches(/(?=.*[a-z])|(?=.*[A-Z])/, {
+  @Matches(/^[a-zA-Z0-9 ]*$/, {
     message:
-      'The folder name must contain at least one lowercase or one uppercase letter.',
+      'The folder name must contain at least one letter (a-z or A-Z) or digits. Cyrillic characters are not allowed.',
   })
   name: string;
 }
