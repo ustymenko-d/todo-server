@@ -27,7 +27,6 @@ model RefreshToken {
   token     String   @id
   userId    String
   sessionId String
-  createdAt DateTime @default(now())
   expiresAt DateTime
   revoked   Boolean  @default(false)
 
