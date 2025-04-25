@@ -29,7 +29,7 @@ export class TaskBase {
 
   @IsOptional()
   @IsDate()
-  expiresAt?: Date | null;
+  expiresDate?: Date | null;
 
   @IsOptional()
   @IsUUID()
@@ -45,7 +45,7 @@ export class Task extends TaskBase {
 
   @IsOptional()
   @IsDate()
-  createdAt?: Date;
+  startDate?: Date;
 }
 
 export class GetTasksRequest extends Pagination {

@@ -40,8 +40,8 @@ model Task {
   completed    Boolean   @default(false)
   userId       String
   parentTaskId String?
-  createdAt    DateTime  @default(now())
-  expiresAt    DateTime?
+  startDate    DateTime  @default(now())
+  expiresDate  DateTime?
   folderId     String?
 
   user       User    @relation("UserTasks", fields: [userId], references: [id], onDelete: Cascade)

@@ -4,7 +4,6 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetTasksRequest, Task, TaskBase } from './tasks.dto';
@@ -31,11 +30,7 @@ export class TasksService {
     if (folderId) await this.folderIdValidation(folderId, userId);
 
     return await this.prisma.task.create({
-      data: {
-        ...payload,
-        id: uuidv4(),
-        createdAt: new Date(),
-      },
+      data: payload,
     });
   }
 
@@ -51,7 +46,7 @@ export class TasksService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startDate: 'asc' },
         select: { id: true },
       }),
       this.prisma.task.count({ where }),
