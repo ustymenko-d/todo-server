@@ -1,65 +1,68 @@
 import {
   IsBoolean,
+  IsDate,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
-  MinLength,
+  MaxLength,
 } from 'class-validator';
-import { PaginationDto } from 'src/common/common.dto';
+import { Pagination } from 'src/common/common.dto';
 
-export class TaskBaseDto {
+export class TaskBase {
   @IsString()
-  @IsNotEmpty({ message: 'The title is required.' })
-  @MinLength(2, { message: 'The title must be at least 2 characters long.' })
+  @IsNotEmpty()
+  @MaxLength(50)
   title: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(300)
   description?: string | null;
 
-  @IsBoolean({ message: 'Invalid value.' })
+  @IsBoolean()
   completed: boolean;
 
-  @IsString()
   @IsOptional()
+  @IsUUID()
   parentTaskId?: string | null;
 
   @IsOptional()
+  @IsDate()
   expiresAt?: Date | null;
 
-  @IsUUID()
   @IsOptional()
+  @IsUUID()
   folderId?: string | null;
 }
 
-export class TaskDto extends TaskBaseDto {
-  @IsString()
-  @IsNotEmpty({ message: 'The task ID is required.' })
+export class Task extends TaskBase {
+  @IsUUID()
   id: string;
 
   @IsUUID()
   userId: string;
 
   @IsOptional()
+  @IsDate()
   createdAt?: Date;
 }
 
-export class GetTasksRequestDto extends PaginationDto {
-  @IsString({ message: 'Invalid value.' })
+export class GetTasksRequest extends Pagination {
   @IsOptional()
+  @IsString()
   title?: string;
 
-  @IsBoolean({ message: 'Invalid value.' })
   @IsOptional()
+  @IsBoolean()
   completed?: boolean;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   topLayerTasks?: boolean;
 
-  @IsString()
   @IsOptional()
+  @IsUUID()
   taskId?: string;
 
   @IsOptional()
@@ -67,12 +70,7 @@ export class GetTasksRequestDto extends PaginationDto {
   folderId?: string | null;
 }
 
-export class GetTasksPayloadDto extends GetTasksRequestDto {
-  @IsUUID()
-  userId: string;
-}
-
-export class TaskIdDto {
+export class TaskId {
   @IsUUID()
   taskId: string;
 }

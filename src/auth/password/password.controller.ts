@@ -1,6 +1,6 @@
 import { Body, Controller, Logger, Patch, Post, Query } from '@nestjs/common';
 import { handleRequest } from 'src/common/utils/requestHandler';
-import { EmailBaseDto, PasswordBaseDto } from '../auth.dto';
+import { EmailBase, PasswordBase } from '../auth.dto';
 import { IResponseStatus } from 'src/common/common.types';
 import { PasswordService } from './password.service';
 
@@ -10,7 +10,7 @@ export class PasswordController {
 
   @Post('forgot-password')
   async forgotPassword(
-    @Body() { email }: EmailBaseDto,
+    @Body() { email }: EmailBase,
   ): Promise<IResponseStatus> {
     return handleRequest(
       async () => {
@@ -28,7 +28,7 @@ export class PasswordController {
   @Patch('reset-password')
   async resetPassword(
     @Query('resetToken') resetToken: string,
-    @Body() { password }: PasswordBaseDto,
+    @Body() { password }: PasswordBase,
   ): Promise<IResponseStatus> {
     return handleRequest(
       async () => {

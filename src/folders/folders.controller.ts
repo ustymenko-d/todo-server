@@ -14,14 +14,11 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { FolderOwner } from './folders.guard';
 import { FoldersService } from './folders.service';
-import { FolderIdDto, FolderNameDto } from './folders.dto';
-import {
-  IFolderResponse,
-  IGetFolderRequest,
-  IGetFolderResponse,
-} from './folders.types';
-import { IJwtUser } from 'src/common/common.types';
 import { handleRequest } from 'src/common/utils/requestHandler';
+import { IJwtUser } from 'src/common/common.types';
+import { Pagination } from 'src/common/common.dto';
+import { FolderId, FolderName } from './folders.dto';
+import { IFolderResponse, IGetFoldersResponse } from './folders.types';
 
 @Controller('folders')
 export class FoldersController {
@@ -32,7 +29,7 @@ export class FoldersController {
   async create(
     @Req()
     req: { user: IJwtUser },
-    @Body() body: FolderNameDto,
+    @Body() body: FolderName,
   ): Promise<IFolderResponse> {
     return handleRequest(
       async () => {
@@ -56,8 +53,8 @@ export class FoldersController {
   async get(
     @Req()
     req: { user: IJwtUser },
-    @Query() query: IGetFolderRequest,
-  ): Promise<IGetFolderResponse> {
+    @Query() query: Pagination & FolderName,
+  ): Promise<IGetFoldersResponse> {
     return handleRequest(
       async () => {
         const { page, limit, name } = query;
@@ -77,17 +74,15 @@ export class FoldersController {
   @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Patch(':folderId')
   async rename(
-    @Param() { folderId }: FolderIdDto,
-    @Body() { name }: FolderNameDto,
+    @Param() { folderId }: FolderId,
+    @Body() { name }: FolderName,
   ): Promise<IFolderResponse> {
     return handleRequest(
-      async () => {
-        return {
-          success: true,
-          message: 'Folder rename successfully',
-          folder: await this.foldersService.renameFolder(folderId, name),
-        };
-      },
+      async () => ({
+        success: true,
+        message: 'Folder rename successfully',
+        folder: await this.foldersService.renameFolder(folderId, name),
+      }),
       'Eror while renaminging folder',
       this.logger,
     );
@@ -95,15 +90,13 @@ export class FoldersController {
 
   @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Delete(':folderId')
-  async delete(@Param() { folderId }: FolderIdDto): Promise<IFolderResponse> {
+  async delete(@Param() { folderId }: FolderId): Promise<IFolderResponse> {
     return handleRequest(
-      async () => {
-        return {
-          success: true,
-          message: 'Folder deleted successfully',
-          folder: await this.foldersService.deleteFolder(folderId),
-        };
-      },
+      async () => ({
+        success: true,
+        message: 'Folder deleted successfully',
+        folder: await this.foldersService.deleteFolder(folderId),
+      }),
       'Eror while deleting folder',
       this.logger,
     );

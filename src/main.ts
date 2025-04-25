@@ -10,7 +10,13 @@ async function bootstrap() {
   const frontendUrl = configService.get<string>('FRONTEND_URL');
   const port = configService.get<number>('PORT') ?? 8080;
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
   app.use(cookieParser());
   app.enableCors({
     origin: frontendUrl,

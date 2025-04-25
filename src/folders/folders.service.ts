@@ -8,8 +8,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   ICreateFolderPayload,
   IFolder,
-  IGetFolderPayload,
-  IGetFolderResponse,
+  IGetFoldersPayload,
+  IGetFoldersResponse,
 } from './folders.types';
 
 @Injectable()
@@ -39,7 +39,7 @@ export class FoldersService {
     return await this.prisma.folder.create({ data: payload });
   }
 
-  async getFolders(payload: IGetFolderPayload): Promise<IGetFolderResponse> {
+  async getFolders(payload: IGetFoldersPayload): Promise<IGetFoldersResponse> {
     const { page, limit } = payload;
     const skip = (page - 1) * limit;
     const where = this.buildFolderWhereInput(payload);
@@ -82,7 +82,7 @@ export class FoldersService {
   }
 
   private buildFolderWhereInput(
-    payload: IGetFolderPayload,
+    payload: IGetFoldersPayload,
   ): Prisma.FolderWhereInput {
     const { userId, name } = payload;
     return Object.assign(
