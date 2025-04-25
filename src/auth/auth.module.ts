@@ -7,6 +7,7 @@ import { CookiesModule } from './cookies/cookies.module';
 import { MailModule } from './mail/mail.module';
 import { TokensModule } from './tokens/tokens.module';
 import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
+import { FoldersService } from 'src/folders/folders.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
     TokensModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, FoldersService],
   exports: [AuthService],
 })
 export class AuthModule {}

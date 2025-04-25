@@ -94,9 +94,7 @@ export class AuthController {
   @Get('account-info')
   async getAccountInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
     return handleRequest(
-      async () => {
-        return await this.authService.getAccountInfo(req.user.userId);
-      },
+      async () => await this.authService.getAccountInfo(req.user.userId),
       'Get account info error',
       this.logger,
     );
