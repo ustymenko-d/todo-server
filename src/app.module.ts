@@ -4,7 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CleanupModule } from './cleanup/cleanup.module';
 import { AuthModule } from './auth/auth.module';
 import { TasksModule } from './tasks/tasks.module';
-import { FolderModule } from './folder/folder.module';
+import { FoldersModule } from './folders/folders.module';
 
 @Module({
   imports: [
@@ -16,7 +16,7 @@ import { FolderModule } from './folder/folder.module';
     CleanupModule,
     AuthModule,
     TasksModule,
-    FolderModule,
+    FoldersModule,
   ],
 })
 export class AppModule {}

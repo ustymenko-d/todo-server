@@ -10,10 +10,10 @@ import {
   IFolder,
   IGetFolderPayload,
   IGetFolderResponse,
-} from './folder.types';
+} from './folders.types';
 
 @Injectable()
-export class FolderService {
+export class FoldersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {

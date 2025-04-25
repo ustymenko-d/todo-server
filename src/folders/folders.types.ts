@@ -1,5 +1,5 @@
 import { GetResponseDto, PaginationDto } from 'src/common/common.dto';
-import { FolderNameDto } from './folder.dto';
+import { FolderNameDto } from './folders.dto';
 import { IResponseStatus } from 'src/common/common.types';
 
 export interface ICreateFolderPayload {

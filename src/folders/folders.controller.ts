@@ -12,20 +12,20 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { FolderOwnerGuard } from './folder-owner.guard';
-import { FolderService } from './folder.service';
-import { FolderIdDto, FolderNameDto } from './folder.dto';
+import { FolderOwner } from './folders.guard';
+import { FoldersService } from './folders.service';
+import { FolderIdDto, FolderNameDto } from './folders.dto';
 import {
   IFolderResponse,
   IGetFolderRequest,
   IGetFolderResponse,
-} from './folder.types';
+} from './folders.types';
 import { IJwtUser } from 'src/common/common.types';
 import { handleRequest } from 'src/common/utils/requestHandler';
 
-@Controller('folder')
-export class FolderController {
-  constructor(private readonly folderService: FolderService) {}
+@Controller('folders')
+export class FoldersController {
+  constructor(private readonly foldersService: FoldersService) {}
 
   @UseGuards(AuthGuard('jwt'))
   @Post()
@@ -43,7 +43,7 @@ export class FolderController {
         return {
           success: true,
           message: 'Folder create successfully',
-          folder: await this.folderService.createFolder(payload),
+          folder: await this.foldersService.createFolder(payload),
         };
       },
       'Eror while creating folder',
@@ -67,14 +67,14 @@ export class FolderController {
           limit: +limit,
           userId: req.user.userId,
         };
-        return await this.folderService.getFolders(payload);
+        return await this.foldersService.getFolders(payload);
       },
       'Eror while fetching folder',
       this.logger,
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
+  @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Patch(':folderId')
   async rename(
     @Param() { folderId }: FolderIdDto,
@@ -85,7 +85,7 @@ export class FolderController {
         return {
           success: true,
           message: 'Folder rename successfully',
-          folder: await this.folderService.renameFolder(folderId, name),
+          folder: await this.foldersService.renameFolder(folderId, name),
         };
       },
       'Eror while renaminging folder',
@@ -93,7 +93,7 @@ export class FolderController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), FolderOwnerGuard)
+  @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Delete(':folderId')
   async delete(@Param() { folderId }: FolderIdDto): Promise<IFolderResponse> {
     return handleRequest(
@@ -101,7 +101,7 @@ export class FolderController {
         return {
           success: true,
           message: 'Folder deleted successfully',
-          folder: await this.folderService.deleteFolder(folderId),
+          folder: await this.foldersService.deleteFolder(folderId),
         };
       },
       'Eror while deleting folder',
@@ -109,5 +109,5 @@ export class FolderController {
     );
   }
 
-  private readonly logger = new Logger(FolderController.name);
+  private readonly logger = new Logger(FoldersController.name);
 }
