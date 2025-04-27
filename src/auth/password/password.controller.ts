@@ -9,9 +9,7 @@ export class PasswordController {
   constructor(private readonly passwordService: PasswordService) {}
 
   @Post('forgot-password')
-  async forgotPassword(
-    @Body() { email }: EmailBase,
-  ): Promise<IResponseStatus> {
+  async forgotPassword(@Body() { email }: EmailBase): Promise<IResponseStatus> {
     return handleRequest(
       async () => {
         await this.passwordService.sendResetPasswordEmail(email);

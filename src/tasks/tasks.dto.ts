@@ -20,12 +20,17 @@ export class TaskBase {
   @MaxLength(300)
   description?: string | null;
 
+  @IsOptional()
   @IsBoolean()
-  completed: boolean;
+  completed?: boolean;
 
   @IsOptional()
   @IsUUID()
   parentTaskId?: string | null;
+
+  @IsOptional()
+  @IsDate()
+  startDate?: Date;
 
   @IsOptional()
   @IsDate()
@@ -42,10 +47,6 @@ export class Task extends TaskBase {
 
   @IsUUID()
   userId: string;
-
-  @IsOptional()
-  @IsDate()
-  startDate?: Date;
 }
 
 export class GetTasksRequest extends Pagination {
