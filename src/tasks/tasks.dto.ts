@@ -1,6 +1,6 @@
 import {
   IsBoolean,
-  IsDate,
+  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -29,11 +29,11 @@ export class TaskBase {
   parentTaskId?: string | null;
 
   @IsOptional()
-  @IsDate()
+  @IsISO8601()
   startDate?: Date;
 
   @IsOptional()
-  @IsDate()
+  @IsISO8601()
   expiresDate?: Date | null;
 
   @IsOptional()
