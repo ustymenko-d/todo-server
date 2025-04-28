@@ -9,8 +9,9 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { IAuthData, IUser, IUserInfo, TFindUserByQuery } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { MailService } from 'src/auth/mail/mail.service';
 import { TokensService } from 'src/auth/tokens/tokens.service';
+import { MailService } from 'src/auth/mail/mail.service';
+import { FoldersService } from 'src/folders/folders.service';
 import HashHandler from 'src/common/utils/hashHandler';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokensService,
     private readonly mailService: MailService,
+    private readonly foldersService: FoldersService,
   ) {}
 
   async signup(email: string, password: string): Promise<IAuthData> {
@@ -37,7 +39,7 @@ export class AuthService {
         user.id,
         sessionId,
       ),
-      userInfo: this.createUserInfo(user),
+      userInfo: await this.createUserInfo(user),
     };
   }
 
@@ -65,7 +67,7 @@ export class AuthService {
         user.id,
         sessionId,
       ),
-      userInfo: this.createUserInfo(user),
+      userInfo: await this.createUserInfo(user),
     };
   }
 
@@ -75,7 +77,7 @@ export class AuthService {
 
   async getAccountInfo(id: string): Promise<IUserInfo> {
     const user = await this.findUserBy({ id });
-    return this.createUserInfo(user);
+    return await this.createUserInfo(user);
   }
 
   async deleteUser(id: string): Promise<void> {
@@ -114,13 +116,27 @@ export class AuthService {
     return user;
   }
 
-  private createUserInfo({
+  private async createUserInfo({
     id,
     email,
     username,
     createdAt,
     isVerified,
-  }: IUser): IUserInfo {
-    return { id, email, username, createdAt, isVerified };
+  }: IUser): Promise<IUserInfo> {
+    const foldersRes = await this.foldersService.getFolders({
+      name: '',
+      page: 1,
+      limit: 25,
+      userId: id,
+    });
+    const { folders } = foldersRes;
+    return {
+      id,
+      email,
+      username,
+      createdAt,
+      isVerified,
+      folders,
+    };
   }
 }

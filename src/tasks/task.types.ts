@@ -1,16 +1,6 @@
-export interface ICreateTaskPayload {
-  title: string;
-  description?: string | null;
-  completed: boolean;
-  parentTaskId?: string | null;
-  expiresAt?: Date | null;
-  folderId?: string | null;
-  userId: string;
-}
+import { Task } from './tasks.dto';
 
-export interface ITask extends ICreateTaskPayload {
-  id: string;
-  createdAt?: Date;
+export interface ITask extends Task {
   subtasks?: ITask[];
 }
 
@@ -19,15 +9,10 @@ export interface ITaskResponse {
   task: ITask;
 }
 
-export interface ITasksData {
+export interface IGetTasksResponse {
   page: number;
   limit: number;
   pages: number;
   total: number;
   tasks: ITask[];
-}
-
-export interface IGetTasksResponse {
-  success: boolean;
-  data: ITasksData;
 }

@@ -4,17 +4,39 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { GetTasksPayloadDto, TaskDto } from './tasks.dto';
-import { ICreateTaskPayload, ITask, ITasksData } from './task.types';
+import { GetTasksRequest, Task, TaskBase } from './tasks.dto';
+import { ITask, IGetTasksResponse } from './task.types';
 
 @Injectable()
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async getTasks(payload: GetTasksPayloadDto): Promise<ITasksData> {
+  async createTask(payload: TaskBase & { userId: string }): Promise<ITask> {
+    const { userId, parentTaskId, folderId } = payload;
+    await this.validateTaskCreation(userId);
+
+    if (parentTaskId) {
+      await this.getTaskById(parentTaskId);
+      const depth = await this.getTaskDepth(parentTaskId);
+      if (depth >= 5)
+        throw new UnprocessableEntityException(
+          'Maximum task depth of 5 reached',
+        );
+      await this.subtaskCountValidation(parentTaskId);
+    }
+
+    if (folderId) await this.folderIdValidation(folderId, userId);
+
+    return await this.prisma.task.create({
+      data: payload,
+    });
+  }
+
+  async getTasks(
+    payload: GetTasksRequest & { userId: string },
+  ): Promise<IGetTasksResponse> {
     const { page, limit } = payload;
     const skip = (page - 1) * limit;
     const where = this.buildTaskWhereInput(payload);
@@ -24,7 +46,7 @@ export class TasksService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startDate: 'asc' },
         select: { id: true },
       }),
       this.prisma.task.count({ where }),
@@ -43,32 +65,7 @@ export class TasksService {
     };
   }
 
-  async createTask(payload: ICreateTaskPayload): Promise<ITask> {
-    const { userId, parentTaskId, folderId } = payload;
-    await this.validateTaskCreation(userId);
-
-    if (parentTaskId) {
-      await this.getTaskById(parentTaskId);
-      const depth = await this.getTaskDepth(parentTaskId);
-      if (depth >= 5)
-        throw new UnprocessableEntityException(
-          'Maximum task depth of 5 reached',
-        );
-      await this.subtaskCountValidation(parentTaskId);
-    }
-
-    if (folderId) await this.folderIdValidation(folderId, userId);
-
-    return await this.prisma.task.create({
-      data: {
-        ...payload,
-        id: uuidv4(),
-        createdAt: new Date(),
-      },
-    });
-  }
-
-  async editTask(payload: TaskDto): Promise<ITask> {
+  async editTask(payload: Task): Promise<ITask> {
     const { id, parentTaskId, folderId, userId } = payload;
 
     if (parentTaskId) {
@@ -228,7 +225,7 @@ export class TasksService {
   }
 
   private buildTaskWhereInput(
-    payload: GetTasksPayloadDto,
+    payload: GetTasksRequest & { userId: string },
   ): Prisma.TaskWhereInput {
     const { taskId, completed, userId, topLayerTasks, folderId, title } =
       payload;

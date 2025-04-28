@@ -13,7 +13,7 @@ import {
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthDto } from './auth.dto';
+import { AuthData } from './auth.dto';
 import { CookiesService } from './cookies/cookies.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 import { IAuthResponse, IUserInfo } from './auth.types';
@@ -28,7 +28,7 @@ export class AuthController {
 
   @Post('signup')
   async signup(
-    @Body() body: AuthDto,
+    @Body() body: AuthData,
     @Res({ passthrough: true }) res: Response,
   ): Promise<IAuthResponse> {
     return handleRequest(
@@ -69,7 +69,7 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() body: AuthDto,
+    @Body() body: AuthData,
     @Res({ passthrough: true }) res: Response,
   ): Promise<IAuthResponse> {
     return handleRequest(
@@ -94,9 +94,7 @@ export class AuthController {
   @Get('account-info')
   async getAccountInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
     return handleRequest(
-      async () => {
-        return await this.authService.getAccountInfo(req.user.userId);
-      },
+      async () => await this.authService.getAccountInfo(req.user.userId),
       'Get account info error',
       this.logger,
     );

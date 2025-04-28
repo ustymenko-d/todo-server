@@ -7,7 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class PasswordBaseDto {
+export class PasswordBase {
   @IsString()
   @MinLength(8, { message: 'Password must be at least 8 characters long.' })
   @MaxLength(64, { message: 'Password must not exceed 64 characters.' })
@@ -23,13 +23,13 @@ export class PasswordBaseDto {
   password: string;
 }
 
-export class EmailBaseDto {
-  @IsEmail({}, { message: 'Invalid email address.' })
+export class EmailBase {
+  @IsEmail()
   email: string;
 }
 
-export class AuthDto extends PasswordBaseDto {
-  @IsEmail({}, { message: 'Invalid email address.' })
+export class AuthData extends PasswordBase {
+  @IsEmail()
   email: string;
 
   @IsBoolean()
