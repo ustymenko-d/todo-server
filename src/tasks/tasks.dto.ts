@@ -108,12 +108,12 @@ function IsAfterDate(property: string, validationOptions?: ValidationOptions) {
           return (
             !isNaN(startDate.getTime()) &&
             !isNaN(endDate.getTime()) &&
-            endDate > startDate
+            endDate >= startDate
           );
         },
 
         defaultMessage({ property, constraints }: ValidationArguments) {
-          return `${property} must be later than ${constraints[0]}`;
+          return `The "${property}" must be the same as or later than ${constraints[0]}.`;
         },
       },
     });
