@@ -46,7 +46,7 @@ export class TasksService {
         where,
         skip,
         take: limit,
-        orderBy: { startDate: 'asc' },
+        orderBy: { lastEdited: 'desc' },
         select: { id: true },
       }),
       this.prisma.task.count({ where }),
