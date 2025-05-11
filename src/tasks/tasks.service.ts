@@ -6,14 +6,21 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { TasksGateway } from 'src/sockets/tasks.gateway';
 import { GetTasksRequest, Task, TaskBase } from './tasks.dto';
 import { ITask, IGetTasksResponse } from './task.types';
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private tasksGateway: TasksGateway,
+  ) {}
 
-  async createTask(payload: TaskBase & { userId: string }): Promise<ITask> {
+  async createTask(
+    payload: TaskBase & { userId: string },
+    socketId: string,
+  ): Promise<ITask> {
     const { userId, parentTaskId, folderId } = payload;
     await this.validateTaskCreation(userId);
 
@@ -29,9 +36,9 @@ export class TasksService {
 
     if (folderId) await this.folderIdValidation(folderId, userId);
 
-    return await this.prisma.task.create({
-      data: payload,
-    });
+    const task = await this.prisma.task.create({ data: payload });
+    this.tasksGateway.emitTaskCreated(task, socketId);
+    return task;
   }
 
   async getTasks(
@@ -65,7 +72,7 @@ export class TasksService {
     };
   }
 
-  async editTask(payload: Task): Promise<ITask> {
+  async editTask(payload: Task, socketId: string): Promise<ITask> {
     const { id, parentTaskId, folderId, userId } = payload;
 
     if (parentTaskId) {
@@ -88,26 +95,32 @@ export class TasksService {
 
     if (folderId) await this.folderIdValidation(folderId, userId);
 
-    return await this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data: { ...payload },
     });
+    this.tasksGateway.emitTaskUpdated(updated, socketId);
+    return updated;
   }
 
-  async toggleStatus(id: string): Promise<ITask> {
+  async toggleStatus(id: string, socketId: string): Promise<ITask> {
     const task = await this.prisma.task.findUniqueOrThrow({
       where: { id },
       select: { completed: true },
     });
 
-    return await this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data: { completed: !task.completed },
     });
+    this.tasksGateway.emitTaskToggleStatus(updated, socketId);
+    return updated;
   }
 
-  async deleteTask(id: string): Promise<ITask> {
-    return this.prisma.task.delete({ where: { id } });
+  async deleteTask(id: string, socketId: string): Promise<ITask> {
+    const deleted = await this.prisma.task.delete({ where: { id } });
+    this.tasksGateway.emitTaskDeleted(deleted, socketId);
+    return deleted;
   }
 
   private async isUserVerified(userId: string): Promise<boolean> {

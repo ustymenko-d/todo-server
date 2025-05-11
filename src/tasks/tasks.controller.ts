@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Headers,
   Logger,
   Param,
   Patch,
@@ -27,14 +28,18 @@ export class TasksController {
   async create(
     @Req() req: { user: IJwtUser },
     @Body() body: TaskBase,
+    @Headers('x-socket-id') socketId?: string,
   ): Promise<ITaskResponse> {
     return handleRequest(
       async () => ({
         success: true,
-        task: await this.tasksService.createTask({
-          ...body,
-          userId: req.user.userId,
-        }),
+        task: await this.tasksService.createTask(
+          {
+            ...body,
+            userId: req.user.userId,
+          },
+          socketId,
+        ),
       }),
       'Error while creating a task',
       this.logger,
@@ -60,11 +65,14 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Put()
-  async edit(@Body() body: Task): Promise<ITaskResponse> {
+  async edit(
+    @Body() body: Task,
+    @Headers('x-socket-id') socketId?: string,
+  ): Promise<ITaskResponse> {
     return handleRequest(
       async () => ({
         success: true,
-        task: await this.tasksService.editTask(body),
+        task: await this.tasksService.editTask(body, socketId),
       }),
       'Error while editing a task',
       this.logger,
@@ -73,11 +81,14 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Patch(':taskId')
-  async toggleStatus(@Param() { taskId }: TaskId): Promise<ITaskResponse> {
+  async toggleStatus(
+    @Param() { taskId }: TaskId,
+    @Headers('x-socket-id') socketId?: string,
+  ): Promise<ITaskResponse> {
     return handleRequest(
       async () => ({
         success: true,
-        task: await this.tasksService.toggleStatus(taskId),
+        task: await this.tasksService.toggleStatus(taskId, socketId),
       }),
       `Error when change status of the task (${taskId})`,
       this.logger,
@@ -86,11 +97,14 @@ export class TasksController {
 
   @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
   @Delete(':taskId')
-  async delete(@Param() { taskId }: TaskId): Promise<ITaskResponse> {
+  async delete(
+    @Param() { taskId }: TaskId,
+    @Headers('x-socket-id') socketId?: string,
+  ): Promise<ITaskResponse> {
     return handleRequest(
       async () => ({
         success: true,
-        task: await this.tasksService.deleteTask(taskId),
+        task: await this.tasksService.deleteTask(taskId, socketId),
       }),
       'Error when deleting a task',
       this.logger,
