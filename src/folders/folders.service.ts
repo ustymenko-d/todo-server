@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FoldersGateway } from 'src/sockets/folders.gateway';
 import {
   ICreateFolderPayload,
   IFolder,
@@ -14,29 +15,19 @@ import {
 
 @Injectable()
 export class FoldersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private foldersGateway: FoldersGateway,
+  ) {}
 
-  async createFolder(payload: ICreateFolderPayload): Promise<IFolder> {
-    const { userId } = payload;
-
-    const { isVerified } = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { isVerified: true },
-    });
-
-    const userFoldersCount = await this.prisma.folder.count({
-      where: { userId },
-    });
-
-    if (!isVerified && userFoldersCount >= 3)
-      throw new ForbiddenException(
-        'Unverified users cannot create more than three folders',
-      );
-
-    if (isVerified && userFoldersCount >= 25)
-      throw new ForbiddenException('You cannot create more than 25 folders');
-
-    return await this.prisma.folder.create({ data: payload });
+  async createFolder(
+    payload: ICreateFolderPayload,
+    socketId?: string,
+  ): Promise<IFolder> {
+    await this.checkFolderCreationLimit(payload.userId);
+    const folder = await this.prisma.folder.create({ data: payload });
+    this.foldersGateway.emitFolderCreated(folder, socketId);
+    return folder;
   }
 
   async getFolders(payload: IGetFoldersPayload): Promise<IGetFoldersResponse> {
@@ -63,7 +54,11 @@ export class FoldersService {
     };
   }
 
-  async renameFolder(id: string, name: string): Promise<IFolder> {
+  async renameFolder(
+    id: string,
+    name: string,
+    socketId?: string,
+  ): Promise<IFolder> {
     const folder = await this.prisma.folder.findUnique({
       where: { id },
       select: { name: true },
@@ -71,14 +66,38 @@ export class FoldersService {
 
     if (!folder) throw new NotFoundException(`Folder with id ${id} not found`);
 
-    return await this.prisma.folder.update({
+    const updated = await this.prisma.folder.update({
       where: { id },
       data: { name },
     });
+
+    this.foldersGateway.emitFolderRenamed(updated, socketId);
+    return updated;
   }
 
-  async deleteFolder(id: string): Promise<IFolder> {
-    return await this.prisma.folder.delete({ where: { id } });
+  async deleteFolder(id: string, socketId?: string): Promise<IFolder> {
+    const deleted = await this.prisma.folder.delete({ where: { id } });
+    this.foldersGateway.emitFolderDeleted(deleted, socketId);
+    return deleted;
+  }
+
+  private async checkFolderCreationLimit(userId: string): Promise<void> {
+    const { isVerified } = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isVerified: true },
+    });
+
+    const userFoldersCount = await this.prisma.folder.count({
+      where: { userId },
+    });
+
+    if (!isVerified && userFoldersCount >= 3)
+      throw new ForbiddenException(
+        'Unverified users cannot create more than three folders',
+      );
+
+    if (isVerified && userFoldersCount >= 25)
+      throw new ForbiddenException('You cannot create more than 25 folders');
   }
 
   private buildFolderWhereInput(

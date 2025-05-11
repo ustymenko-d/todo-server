@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Logger,
   Param,
   Patch,
@@ -30,6 +31,7 @@ export class FoldersController {
     @Req()
     req: { user: IJwtUser },
     @Body() body: FolderName,
+    @Headers('x-socket-id') socketId?: string,
   ): Promise<IFolderResponse> {
     return handleRequest(
       async () => {
@@ -40,7 +42,7 @@ export class FoldersController {
         return {
           success: true,
           message: 'Folder create successfully',
-          folder: await this.foldersService.createFolder(payload),
+          folder: await this.foldersService.createFolder(payload, socketId),
         };
       },
       'Eror while creating folder',
@@ -76,12 +78,17 @@ export class FoldersController {
   async rename(
     @Param() { folderId }: FolderId,
     @Body() { name }: FolderName,
+    @Headers('x-socket-id') socketId?: string,
   ): Promise<IFolderResponse> {
     return handleRequest(
       async () => ({
         success: true,
         message: 'Folder rename successfully',
-        folder: await this.foldersService.renameFolder(folderId, name),
+        folder: await this.foldersService.renameFolder(
+          folderId,
+          name,
+          socketId,
+        ),
       }),
       'Eror while renaminging folder',
       this.logger,
@@ -90,12 +97,15 @@ export class FoldersController {
 
   @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Delete(':folderId')
-  async delete(@Param() { folderId }: FolderId): Promise<IFolderResponse> {
+  async delete(
+    @Param() { folderId }: FolderId,
+    @Headers('x-socket-id') socketId?: string,
+  ): Promise<IFolderResponse> {
     return handleRequest(
       async () => ({
         success: true,
         message: 'Folder deleted successfully',
-        folder: await this.foldersService.deleteFolder(folderId),
+        folder: await this.foldersService.deleteFolder(folderId, socketId),
       }),
       'Eror while deleting folder',
       this.logger,
