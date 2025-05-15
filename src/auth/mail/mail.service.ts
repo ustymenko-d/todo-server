@@ -38,7 +38,7 @@ export class MailService {
     email: string,
     verificationToken: string,
   ): Promise<void> {
-    const verificationUrl = `${this.frontendUrl}?verificationToken=${verificationToken}`;
+    const verificationUrl = `${this.frontendUrl}/verification?verificationToken=${verificationToken}`;
     const html = `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Your Email</title></head><body style="font-family:Arial,sans-serif;padding:20px;color:#09090b"><div style="max-width:600px;margin:0 auto;background:#fafafa;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,.1);text-align:center;border:1px solid #d4d4d8"><h2 style="color:#09090b">Welcome to UpTodo!</h2><p style="color:#09090b">Thank you for creating your account! Please verify your email using the link below. If you don’t verify your email within three days, your account will be deleted.</p><a href="${verificationUrl}" style="display:inline-block;padding:10px 20px;background-color:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">Verify Email</a></div></body></html>`;
 
     await this.sendEmail(email, `Verify your email on UpTodo`, html);

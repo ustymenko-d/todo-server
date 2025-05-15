@@ -11,7 +11,6 @@ import { IAuthData, IUser, IUserInfo, TFindUserByQuery } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { TokensService } from 'src/auth/tokens/tokens.service';
 import { MailService } from 'src/auth/mail/mail.service';
-import { FoldersService } from 'src/folders/folders.service';
 import HashHandler from 'src/common/utils/hashHandler';
 
 @Injectable()
@@ -20,7 +19,6 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokensService,
     private readonly mailService: MailService,
-    private readonly foldersService: FoldersService,
   ) {}
 
   async signup(email: string, password: string): Promise<IAuthData> {
@@ -44,10 +42,20 @@ export class AuthService {
   }
 
   async verifyEmail(verificationToken: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { verificationToken },
-      data: { isVerified: true, verificationToken: null },
-    });
+    try {
+      await this.prisma.user.update({
+        where: { verificationToken },
+        data: { isVerified: true, verificationToken: null },
+      });
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Verification token is invalid or expired');
+      }
+      throw error;
+    }
   }
 
   async login(email: string, password: string): Promise<IAuthData> {
@@ -123,20 +131,12 @@ export class AuthService {
     createdAt,
     isVerified,
   }: IUser): Promise<IUserInfo> {
-    const foldersRes = await this.foldersService.getFolders({
-      name: '',
-      page: 1,
-      limit: 25,
-      userId: id,
-    });
-    const { folders } = foldersRes;
     return {
       id,
       email,
       username,
       createdAt,
       isVerified,
-      folders,
     };
   }
 }
