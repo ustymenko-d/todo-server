@@ -1,5 +1,4 @@
 import { IResponseStatus } from 'src/common/common.types';
-import { IFolder } from 'src/folders/folders.types';
 
 export interface ITokenPair {
   accessToken: string;
@@ -12,7 +11,6 @@ export interface IUserInfo {
   username: string;
   createdAt: Date;
   isVerified: boolean;
-  folders?: IFolder[];
 }
 
 export interface IUser extends IUserInfo {

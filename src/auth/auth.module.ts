@@ -7,7 +7,6 @@ import { CookiesModule } from './cookies/cookies.module';
 import { TokensModule } from './tokens/tokens.module';
 import { SocketsModule } from 'src/sockets/sockets.module';
 import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
-import { FoldersService } from 'src/folders/folders.service';
 import { MailService } from './mail/mail.service';
 
 @Module({
@@ -19,7 +18,7 @@ import { MailService } from './mail/mail.service';
     SocketsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, MailService, FoldersService],
+  providers: [AuthService, JwtStrategy, MailService],
   exports: [AuthService],
 })
 export class AuthModule {}
