@@ -5,16 +5,17 @@ import { Response } from 'express';
 @Injectable()
 export class CookiesService {
   private readonly COOKIE_OPTIONS: Record<string, any>;
+  private static readonly EXPIRATION_TIMES = 12 * 60 * 60 * 1000;
 
   constructor(private readonly configService: ConfigService) {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+
     this.COOKIE_OPTIONS = {
       httpOnly: true,
-      partitioned: this.configService.get<string>('NODE_ENV') === 'production',
-      secure: this.configService.get<string>('NODE_ENV') === 'production',
-      sameSite:
-        this.configService.get<string>('NODE_ENV') === 'production'
-          ? ('none' as const)
-          : ('lax' as const),
+      partitioned: isProduction,
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
     };
   }
 
@@ -22,32 +23,25 @@ export class CookiesService {
     res: Response,
     accessToken: string,
     refreshToken: string,
-    rememberMe: boolean = false,
+    rememberMe = false,
   ) {
-    this.setCookie(
-      res,
-      'access_token',
-      accessToken,
-      rememberMe ? CookiesService.EXPIRATION_TIMES : undefined,
-    );
-    this.setCookie(
-      res,
-      'refresh_token',
-      refreshToken,
-      rememberMe ? CookiesService.EXPIRATION_TIMES : undefined,
-    );
+    const expiration = rememberMe ? CookiesService.EXPIRATION_TIMES : undefined;
+    this.setCookie(res, 'accessToken', accessToken, expiration);
+    this.setCookie(res, 'refreshToken', refreshToken, expiration);
+    this.setCookie(res, 'rememberMe', rememberMe.toString(), expiration);
   }
 
   clearAuthCookies(res: Response) {
-    this.clearCookie(res, 'access_token');
-    this.clearCookie(res, 'refresh_token');
+    ['accessToken', 'refreshToken', 'rememberMe'].forEach((name) =>
+      this.clearCookie(res, name),
+    );
   }
 
   private setCookie(
     res: Response,
     name: string,
     value: string,
-    maxAge?: number,
+    maxAge: number,
   ) {
     const options = maxAge
       ? { ...this.COOKIE_OPTIONS, maxAge }
@@ -58,6 +52,4 @@ export class CookiesService {
   private clearCookie(res: Response, name: string) {
     res.clearCookie(name, this.COOKIE_OPTIONS);
   }
-
-  private static readonly EXPIRATION_TIMES = 12 * 60 * 60 * 1000;
 }

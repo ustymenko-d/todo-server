@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Logger,
-  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -24,12 +23,10 @@ export class TokensController {
   async refreshTokens(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Query('rememberMe') rememberMe?: string,
   ): Promise<IResponseStatus> {
     return handleRequest(
       async () => {
-        const { access_token: accessToken, refresh_token: refreshToken } =
-          req.cookies;
+        const { accessToken, refreshToken, rememberMe } = req.cookies;
 
         if (!accessToken || !refreshToken)
           throw new UnauthorizedException('Missing access or refresh token');
