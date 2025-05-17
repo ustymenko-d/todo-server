@@ -81,6 +81,8 @@ export class FoldersService {
     return deleted;
   }
 
+  // --- Helper methods ---
+
   private async checkFolderCreationLimit(userId: string): Promise<void> {
     const { isVerified } = await this.prisma.user.findUnique({
       where: { id: userId },

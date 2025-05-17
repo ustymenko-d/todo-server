@@ -21,6 +21,8 @@ import { handleRequest } from 'src/common/utils/requestHandler';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly cookiesService: CookiesService,
@@ -36,19 +38,21 @@ export class AuthController {
         const { email, password, rememberMe } = body;
         const { accessToken, refreshToken, userInfo } =
           await this.authService.signup(email, password);
+
         this.cookiesService.setAuthCookies(
           res,
           accessToken,
           refreshToken,
           rememberMe,
         );
+
         return {
           success: true,
           message: 'Registration successful. Please verify your email.',
           userInfo,
         };
       },
-      'Signup error',
+      'Registration error.',
       this.logger,
     );
   }
@@ -60,9 +64,9 @@ export class AuthController {
     return handleRequest(
       async () => {
         await this.authService.verifyEmail(verificationToken);
-        return { success: true, message: 'Email verified successfully' };
+        return { success: true, message: 'Email verified successfully.' };
       },
-      'Error during email verification',
+      'Error during email verification.',
       this.logger,
     );
   }
@@ -77,15 +81,17 @@ export class AuthController {
         const { email, password, rememberMe } = body;
         const { accessToken, refreshToken, userInfo } =
           await this.authService.login(email, password);
+
         this.cookiesService.setAuthCookies(
           res,
           accessToken,
           refreshToken,
           rememberMe,
         );
-        return { success: true, message: 'Login successful', userInfo };
+
+        return { success: true, message: 'Login successful.', userInfo };
       },
-      'Login error',
+      'Login error.',
       this.logger,
     );
   }
@@ -95,7 +101,7 @@ export class AuthController {
   async getAccountInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
     return handleRequest(
       async () => await this.authService.getAccountInfo(req.user.userId),
-      'Get account info error',
+      'Get account info error.',
       this.logger,
     );
   }
@@ -111,9 +117,9 @@ export class AuthController {
         const { userId, sessionId } = req.user;
         await this.authService.logout(userId, sessionId);
         this.cookiesService.clearAuthCookies(res);
-        return { success: true, message: 'Logout successful' };
+        return { success: true, message: 'Logout successful.' };
       },
-      'Logout error',
+      'Logout error.',
       this.logger,
     );
   }
@@ -121,8 +127,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Delete('delete-account')
   async deleteAccount(
-    @Req()
-    req: { user: IJwtUser },
+    @Req() req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
   ): Promise<IResponseStatus> {
     return handleRequest(
@@ -131,13 +136,11 @@ export class AuthController {
         this.cookiesService.clearAuthCookies(res);
         return {
           success: true,
-          message: `User deleted successfully`,
+          message: `User deleted successfully.`,
         };
       },
-      'Delete account error',
+      'Delete account error.',
       this.logger,
     );
   }
-
-  private readonly logger = new Logger(AuthController.name);
 }

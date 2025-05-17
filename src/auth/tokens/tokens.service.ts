@@ -16,19 +16,47 @@ import HashHandler from 'src/common/utils/HashHandler';
 @Injectable()
 export class TokensService {
   constructor(
+    private readonly jwtService: JwtService,
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
-    private readonly configService: ConfigService,
-    private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) {}
+
+  decodeAccessToken(accessToken: string): {
+    userId: string;
+    sessionId: string;
+  } {
+    const decodedToken = this.jwtService.decode(accessToken);
+    const { sub: userId, sessionId } = decodedToken;
+    return { userId, sessionId };
+  }
+
+  async refreshTokens(
+    userId: string,
+    refreshToken: string,
+    sessionId: string,
+  ): Promise<ITokenPair> {
+    await this.verifyRefreshToken(userId, refreshToken, sessionId);
+
+    const user = await this.authService.findUserBy({ id: userId });
+    const newAccessToken = this.createAccessToken(user, sessionId);
+
+    await this.revokePreviousTokens(userId, sessionId);
+
+    const newRefreshToken = await this.createRefreshToken(userId, sessionId);
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  }
+
+  // --- Helper methods ---
 
   createAccessToken(user: IUser, sessionId: string): string {
     const { email, id: sub, tokenVersion } = user;
     const payload = {
       email,
       sub,
-      tokenVersion: tokenVersion,
+      tokenVersion,
       sessionId,
     };
     return this.jwtService.sign(payload);
@@ -52,24 +80,11 @@ export class TokensService {
     return token;
   }
 
-  async refreshTokens(
-    userId: string,
-    refreshToken: string,
-    sessionId: string,
-  ): Promise<ITokenPair> {
-    await this.verifyRefreshToken(userId, refreshToken, sessionId);
-    const user = await this.authService.findUserBy({ id: userId });
-    const newAccessToken = this.createAccessToken(user, sessionId);
-    await this.revokePreviousTokens(userId, sessionId);
-    const newRefreshToken = await this.createRefreshToken(userId, sessionId);
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
-  }
-
   async verifyRefreshToken(
     userId: string,
     refreshToken: string,
     sessionId: string,
-  ): Promise<void> {
+  ) {
     const { token } = await this.prisma.refreshToken.findFirst({
       where: {
         userId,
@@ -79,15 +94,15 @@ export class TokensService {
       },
     });
 
-    if (!token) throw new UnauthorizedException('No refresh token found');
+    if (!token) throw new UnauthorizedException('No refresh token found.');
 
     const isTokenValid = await HashHandler.compareString(refreshToken, token);
 
     if (!isTokenValid)
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Invalid or expired refresh token.');
   }
 
-  async revokePreviousTokens(userId: string, sessionId: string): Promise<void> {
+  async revokePreviousTokens(userId: string, sessionId: string) {
     await this.prisma.refreshToken.updateMany({
       where: { userId, sessionId, revoked: false },
       data: { revoked: true },
@@ -108,14 +123,5 @@ export class TokensService {
     return this.jwtService.verify(resetToken, {
       secret: this.configService.get<string>('JWT_RESET_SECRET'),
     });
-  }
-
-  decodeAccessToken(accessToken: string): {
-    userId: string;
-    sessionId: string;
-  } {
-    const decodedToken = this.jwtService.decode(accessToken);
-    const { sub: userId, sessionId } = decodedToken;
-    return { userId, sessionId };
   }
 }

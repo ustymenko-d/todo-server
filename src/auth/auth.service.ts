@@ -30,7 +30,9 @@ export class AuthService {
       hashedPassword,
       verificationToken,
     );
+
     await this.mailService.sendVerificationEmail(email, verificationToken);
+
     return {
       accessToken: this.tokenService.createAccessToken(user, sessionId),
       refreshToken: await this.tokenService.createRefreshToken(
@@ -41,7 +43,7 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(verificationToken: string): Promise<void> {
+  async verifyEmail(verificationToken: string) {
     try {
       await this.prisma.user.update({
         where: { verificationToken },
@@ -52,7 +54,9 @@ export class AuthService {
         error instanceof PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        throw new NotFoundException('Verification token is invalid or expired');
+        throw new NotFoundException(
+          'Verification token is invalid or expired.',
+        );
       }
       throw error;
     }
@@ -66,9 +70,10 @@ export class AuthService {
     );
 
     if (!passwordVerified)
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials.');
 
     const sessionId = uuidv4();
+
     return {
       accessToken: this.tokenService.createAccessToken(user, sessionId),
       refreshToken: await this.tokenService.createRefreshToken(
@@ -79,7 +84,7 @@ export class AuthService {
     };
   }
 
-  async logout(id: string, sessionId: string): Promise<void> {
+  async logout(id: string, sessionId: string) {
     await this.tokenService.revokePreviousTokens(id, sessionId);
   }
 
@@ -88,9 +93,11 @@ export class AuthService {
     return await this.createUserInfo(user);
   }
 
-  async deleteUser(id: string): Promise<void> {
+  async deleteUser(id: string) {
     await this.prisma.user.delete({ where: { id } });
   }
+
+  // --- Helper methods ---
 
   private async createUser(
     email: string,
@@ -112,15 +119,15 @@ export class AuthService {
         error instanceof PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException('User with this email already exists');
+        throw new ConflictException('User with this email already exists.');
       }
-      throw new InternalServerErrorException('Creating user failed');
+      throw new InternalServerErrorException('Failed to create user.');
     }
   }
 
   async findUserBy(query: TFindUserByQuery): Promise<IUser> {
     const user = await this.prisma.user.findUnique({ where: query });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('User not found.');
     return user;
   }
 

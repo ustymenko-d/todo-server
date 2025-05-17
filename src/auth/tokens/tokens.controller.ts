@@ -14,6 +14,8 @@ import { IResponseStatus } from 'src/common/common.types';
 
 @Controller('auth/tokens')
 export class TokensController {
+  private readonly logger = new Logger(TokensController.name);
+
   constructor(
     private readonly tokenService: TokensService,
     private readonly cookiesService: CookiesService,
@@ -29,7 +31,7 @@ export class TokensController {
         const { accessToken, refreshToken, rememberMe } = req.cookies;
 
         if (!accessToken || !refreshToken)
-          throw new UnauthorizedException('Missing access or refresh token');
+          throw new UnauthorizedException('Missing access or refresh token.');
 
         const { userId, sessionId } =
           this.tokenService.decodeAccessToken(accessToken);
@@ -46,12 +48,11 @@ export class TokensController {
           newRefreshToken,
           rememberMe === 'true',
         );
-        return { success: true, message: 'Tokens updated successfully' };
+
+        return { success: true, message: 'Tokens updated successfully.' };
       },
-      'Refresh token error',
+      'Refresh tokens error.',
       this.logger,
     );
   }
-
-  private readonly logger = new Logger(TokensController.name);
 }

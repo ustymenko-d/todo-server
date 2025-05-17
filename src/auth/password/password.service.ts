@@ -15,20 +15,22 @@ export class PasswordService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async sendResetPasswordEmail(email: string): Promise<void> {
+  async sendResetPasswordEmail(email: string) {
     const user = await this.authService.findUserBy({ email });
     const resetToken = this.tokenService.createResetPasswordToken(user);
     await this.mailService.sendResetPasswordEmail(email, resetToken);
   }
 
-  async resetPassword(resetToken: string, password: string): Promise<void> {
+  async resetPassword(resetToken: string, password: string) {
     const { userId, tokenVersion } =
       this.tokenService.verifyResetPasswordToken(resetToken);
     const hashedPassword = await HashHandler.hashString(password);
+
     await this.prisma.user.update({
       where: { id: userId, tokenVersion },
       data: { password: hashedPassword, tokenVersion: { increment: 1 } },
     });
+
     await this.prisma.refreshToken.updateMany({
       where: { userId, revoked: false },
       data: { revoked: true },

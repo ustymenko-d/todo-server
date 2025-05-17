@@ -128,7 +128,7 @@ export class TasksService {
     return deleted;
   }
 
-  // --- Private helper methods ---
+  // --- Helper methods ---
 
   private async validateTaskCreation(userId: string) {
     if (

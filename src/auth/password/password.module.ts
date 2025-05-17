@@ -1,9 +1,9 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { AuthModule } from '../auth.module';
-import { PasswordController } from './password.controller';
-import { PasswordService } from './password.service';
 import { TokensModule } from '../tokens/tokens.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { PasswordController } from './password.controller';
+import { PasswordService } from './password.service';
 import { MailService } from '../mail/mail.service';
 
 @Module({

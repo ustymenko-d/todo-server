@@ -37,6 +37,8 @@ export class CookiesService {
     );
   }
 
+  // --- Helper methods ---
+
   private setCookie(
     res: Response,
     name: string,

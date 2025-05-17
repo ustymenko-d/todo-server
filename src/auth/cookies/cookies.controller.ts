@@ -6,6 +6,8 @@ import { Response } from 'express';
 
 @Controller('auth/cookies')
 export class CookiesController {
+  private readonly logger = new Logger(CookiesController.name);
+
   constructor(private readonly cookiesService: CookiesService) {}
 
   @Get('clear-auth-cookies')
@@ -15,12 +17,10 @@ export class CookiesController {
     return handleRequest(
       async () => {
         this.cookiesService.clearAuthCookies(res);
-        return { success: true, message: 'Cookies cleared successfully' };
+        return { success: true, message: 'Cookies cleared successfully.' };
       },
-      'Cookie clear error',
+      'Cookie clear error.',
       this.logger,
     );
   }
-
-  private readonly logger = new Logger(CookiesController.name);
 }

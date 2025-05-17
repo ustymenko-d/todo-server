@@ -6,6 +6,8 @@ import { PasswordService } from './password.service';
 
 @Controller('auth/password')
 export class PasswordController {
+  private readonly logger = new Logger(PasswordController.name);
+
   constructor(private readonly passwordService: PasswordService) {}
 
   @Post('forgot-password')
@@ -15,10 +17,10 @@ export class PasswordController {
         await this.passwordService.sendResetPasswordEmail(email);
         return {
           success: true,
-          message: 'Password reset email sent successfully',
+          message: 'Reset password email sent successfully.',
         };
       },
-      'Error while sending reset password email',
+      'Error while sending reset password email.',
       this.logger,
     );
   }
@@ -31,12 +33,10 @@ export class PasswordController {
     return handleRequest(
       async () => {
         await this.passwordService.resetPassword(resetToken, password);
-        return { success: true, message: 'Password updated successfully' };
+        return { success: true, message: 'Password updated successfully.' };
       },
-      'Reset password error',
+      'Reset password error.',
       this.logger,
     );
   }
-
-  private readonly logger = new Logger(PasswordController.name);
 }
