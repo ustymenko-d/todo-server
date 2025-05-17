@@ -35,7 +35,7 @@ export class ConnectionGateway
   }
 
   afterInit() {
-    console.log('WebSocket server initialized');
+    console.log('WebSocket server initialized.');
   }
 
   handleConnection(client: Socket) {
@@ -48,7 +48,7 @@ export class ConnectionGateway
 
   @SubscribeMessage('ping')
   handlePing(@MessageBody() data: any): string {
-    console.log('Received ping:', data);
+    console.log('Received ping: ', data);
     return 'pong';
   }
 }

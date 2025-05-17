@@ -24,7 +24,7 @@ export class CleanupService {
       { entity: 'user', conditions: this.getUnverifiedUserConditions() },
     ]);
 
-    this.logger.log('Daily cleaning is completed');
+    this.logger.log('Daily cleaning is completed.');
   }
 
   private async executeCleanup<T extends keyof PrismaService>(
@@ -53,7 +53,7 @@ export class CleanupService {
           : `No ${entityString} records found for cleanup.`,
       );
     } catch (error) {
-      this.logger.error(`Failed to clean up ${entityString}:`, error.stack);
+      this.logger.error(`Failed to clean up ${entityString}: `, error.stack);
       throw error;
     }
   }

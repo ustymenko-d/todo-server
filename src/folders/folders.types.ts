@@ -10,7 +10,7 @@ export interface IFolder extends ICreateFolderPayload {
   id: string;
 }
 
-export type IGetFoldersPayload = Pagination & ICreateFolderPayload;
+export type TGetFoldersPayload = Pagination & ICreateFolderPayload;
 
 export interface IFolderResponse extends IResponseStatus {
   folder: IFolder;

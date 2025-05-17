@@ -9,7 +9,7 @@ import { FoldersGateway } from 'src/sockets/folders.gateway';
 import {
   ICreateFolderPayload,
   IFolder,
-  IGetFoldersPayload,
+  TGetFoldersPayload,
   IGetFoldersResponse,
 } from './folders.types';
 
@@ -30,7 +30,7 @@ export class FoldersService {
     return folder;
   }
 
-  async getFolders(payload: IGetFoldersPayload): Promise<IGetFoldersResponse> {
+  async getFolders(payload: TGetFoldersPayload): Promise<IGetFoldersResponse> {
     const { page, limit } = payload;
     const skip = (page - 1) * limit;
     const where = this.buildFolderWhereInput(payload);
@@ -64,7 +64,7 @@ export class FoldersService {
       select: { name: true },
     });
 
-    if (!folder) throw new NotFoundException(`Folder with id ${id} not found`);
+    if (!folder) throw new NotFoundException(`Folder (ID: ${id}) not found.`);
 
     const updated = await this.prisma.folder.update({
       where: { id },
@@ -93,15 +93,15 @@ export class FoldersService {
 
     if (!isVerified && userFoldersCount >= 3)
       throw new ForbiddenException(
-        'Unverified users cannot create more than three folders',
+        'Unverified users cannot create more than three folders.',
       );
 
     if (isVerified && userFoldersCount >= 25)
-      throw new ForbiddenException('You cannot create more than 25 folders');
+      throw new ForbiddenException('You cannot create more than 25 folders.');
   }
 
   private buildFolderWhereInput(
-    payload: IGetFoldersPayload,
+    payload: TGetFoldersPayload,
   ): Prisma.FolderWhereInput {
     const { userId, name } = payload;
     return Object.assign(
