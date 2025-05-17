@@ -25,7 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     email: string;
     tokenVersion: number;
   }) {
-    if (!this.isPayloadValid(payload)) {
+    if (!this.isValidPayload(payload)) {
       this.logger.warn('Invalid JWT payload');
       throw new UnauthorizedException('Invalid JWT payload');
     }
@@ -37,11 +37,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user) {
       this.logger.warn(`User not found (ID: ${payload.sub})`);
-      throw new UnauthorizedException(`User not found(ID: ${payload.sub})`);
+      throw new UnauthorizedException(`User not found (ID: ${payload.sub})`);
     }
 
     if (user.tokenVersion !== payload.tokenVersion) {
-      this.logger.warn(`Token version mismatch for user ID: ${payload.sub}`);
+      this.logger.warn(`Token version mismatch (user ID: ${payload.sub})`);
       throw new UnauthorizedException('Invalid token version');
     }
 
@@ -52,7 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 
-  private isPayloadValid(payload: {
+  private isValidPayload(payload: {
     sub: string;
     email: string;
     tokenVersion: number;

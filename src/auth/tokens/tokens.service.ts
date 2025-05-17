@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ITokenPair, IUser } from 'src/auth/auth.types';
 import { IJwtUser } from '../../common/common.types';
 import { AuthService } from '../auth.service';
-import HashHandler from 'src/common/utils/hashHandler';
+import HashHandler from 'src/common/utils/HashHandler';
 
 @Injectable()
 export class TokensService {

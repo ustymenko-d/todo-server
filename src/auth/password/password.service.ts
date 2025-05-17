@@ -3,7 +3,7 @@ import { TokensService } from '../tokens/tokens.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from '../auth.service';
-import HashHandler from 'src/common/utils/hashHandler';
+import HashHandler from 'src/common/utils/HashHandler';
 
 @Injectable()
 export class PasswordService {

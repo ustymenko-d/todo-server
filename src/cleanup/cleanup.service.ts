@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+
+type CleanupConditions<T extends keyof PrismaService> = T extends 'refreshToken'
+  ? Prisma.RefreshTokenWhereInput
+  : T extends 'user'
+    ? Prisma.UserWhereInput
+    : never;
 
 @Injectable()
 export class CleanupService {
@@ -8,58 +15,60 @@ export class CleanupService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private logAndThrowError(message: string, error: any) {
-    this.logger.error(message, error.stack);
-    throw error;
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async dailyCleaning() {
+    this.logger.log('Starting daily cleaning...');
+
+    await this.executeCleanup([
+      { entity: 'refreshToken', conditions: this.getExpiredTokenConditions() },
+      { entity: 'user', conditions: this.getUnverifiedUserConditions() },
+    ]);
+
+    this.logger.log('Daily cleaning is completed');
   }
 
-  private async cleanupEntities(
-    entityName: string,
-    conditions: any,
-  ): Promise<void> {
-    try {
-      this.logger.log(`Starting cleanup for ${entityName}...`);
+  private async executeCleanup<T extends keyof PrismaService>(
+    tasks: { entity: T; conditions: CleanupConditions<T> }[],
+  ) {
+    await Promise.all(
+      tasks.map(({ entity, conditions }) => this.cleanup(entity, conditions)),
+    );
+  }
 
-      const entitiesToCleanup = await this.prisma[entityName].findMany({
-        where: conditions,
-      });
+  private async cleanup<T extends keyof PrismaService>(
+    entity: T,
+    conditions: CleanupConditions<T>,
+  ) {
+    const entityString = String(entity);
+    try {
+      this.logger.log(`Starting cleanup for ${entityString}...`);
+
+      const count = await this.prisma[entityString]
+        .deleteMany({ where: conditions })
+        .then((result) => result.count);
 
       this.logger.log(
-        `Found ${entitiesToCleanup.length} ${entityName} to clean up`,
+        count > 0
+          ? `Deleted ${count} ${entityString} records.`
+          : `No ${entityString} records found for cleanup.`,
       );
-
-      if (entitiesToCleanup.length > 0) {
-        const { count } = await this.prisma[entityName].deleteMany({
-          where: conditions,
-        });
-        this.logger.log(`Deleted ${count} ${entityName}`);
-      } else {
-        this.logger.log(`No ${entityName} to clean up.`);
-      }
     } catch (error) {
-      this.logAndThrowError(`Failed to clean up ${entityName}`, error);
+      this.logger.error(`Failed to clean up ${entityString}:`, error.stack);
+      throw error;
     }
   }
 
-  private async cleanupTokens(): Promise<void> {
-    const conditions = {
-      OR: [{ expiresAt: { lt: new Date() } }, { revoked: true }],
-    };
-    await this.cleanupEntities('RefreshToken', conditions);
+  private getExpiredTokenConditions(): CleanupConditions<'refreshToken'> {
+    return { OR: [{ expiresAt: { lt: new Date() } }, { revoked: true }] };
   }
 
-  private async cleanupUnverifiedUsers(): Promise<void> {
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    const conditions = { isVerified: false, createdAt: { lt: threeDaysAgo } };
-    await this.cleanupEntities('User', conditions);
+  private getUnverifiedUserConditions(): CleanupConditions<'user'> {
+    return { isVerified: false, createdAt: { lt: this.getDateDaysAgo(3) } };
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async dailyCleaning(): Promise<void> {
-    this.logger.log('Starting daily cleaning...');
-    await this.cleanupTokens();
-    await this.cleanupUnverifiedUsers();
-    this.logger.log('Daily cleaning is completed');
+  private getDateDaysAgo(days: number): Date {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date;
   }
 }

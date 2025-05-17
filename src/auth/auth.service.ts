@@ -11,7 +11,7 @@ import { IAuthData, IUser, IUserInfo, TFindUserByQuery } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { TokensService } from 'src/auth/tokens/tokens.service';
 import { MailService } from 'src/auth/mail/mail.service';
-import HashHandler from 'src/common/utils/hashHandler';
+import HashHandler from 'src/common/utils/HashHandler';
 
 @Injectable()
 export class AuthService {
