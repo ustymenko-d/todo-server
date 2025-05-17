@@ -1,30 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { WebSocketGateway } from '@nestjs/websockets';
 import { BaseGateway } from './base.gateway';
-import { Server } from 'socket.io';
 import { ITask } from 'src/tasks/task.types';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-@WebSocketGateway({
-  cors: { origin: process.env.FRONTEND_URL, credentials: true },
-})
+@WebSocketGateway()
 export class TasksGateway extends BaseGateway {
-  @WebSocketServer()
-  server: Server;
+  constructor(configService: ConfigService) {
+    super(configService);
+  }
 
   emitTaskCreated(task: ITask, initiatorSocketId?: string) {
-    this.emitToAllExceptInitiator('task:created', task, initiatorSocketId);
+    this.emitEntityEvent<ITask>('task', 'created', task, initiatorSocketId);
   }
 
   emitTaskUpdated(task: ITask, initiatorSocketId?: string) {
-    this.emitToAllExceptInitiator('task:updated', task, initiatorSocketId);
+    this.emitEntityEvent<ITask>('task', 'updated', task, initiatorSocketId);
   }
 
   emitTaskToggleStatus(task: ITask, initiatorSocketId?: string) {
-    this.emitToAllExceptInitiator('task:toggleStatus', task, initiatorSocketId);
+    this.emitEntityEvent<ITask>(
+      'task',
+      'toggleStatus',
+      task,
+      initiatorSocketId,
+    );
   }
 
   emitTaskDeleted(task: ITask, initiatorSocketId?: string) {
-    this.emitToAllExceptInitiator('task:deleted', task, initiatorSocketId);
+    this.emitEntityEvent<ITask>('task', 'deleted', task, initiatorSocketId);
   }
 }
