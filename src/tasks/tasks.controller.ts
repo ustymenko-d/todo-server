@@ -12,15 +12,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { TaskOwnerGuard } from './task-owner.guard';
+import { TaskOwner } from './tasks.guard';
 import { TasksService } from './tasks.service';
 import { GetTasksRequest, TaskBase, Task, TaskId } from './tasks.dto';
 import { IJwtUser } from 'src/common/common.types';
-import { ITaskResponse, IGetTasksResponse } from './task.types';
+import { ITaskResponse, IGetTasksResponse } from './tasks.types';
 import { handleRequest } from 'src/common/utils/requestHandler';
 
 @Controller('tasks')
 export class TasksController {
+  private readonly logger = new Logger(TasksController.name);
+
   constructor(private readonly tasksService: TasksService) {}
 
   @UseGuards(AuthGuard('jwt'))
@@ -41,7 +43,7 @@ export class TasksController {
           socketId,
         ),
       }),
-      'Error while creating a task',
+      'Error while creating a task.',
       this.logger,
     );
   }
@@ -58,12 +60,12 @@ export class TasksController {
           ...body,
           userId: req.user.userId,
         }),
-      'Error while fetching tasks',
+      'Error while fetching tasks.',
       this.logger,
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
+  @UseGuards(AuthGuard('jwt'), TaskOwner)
   @Put()
   async edit(
     @Body() body: Task,
@@ -74,12 +76,12 @@ export class TasksController {
         success: true,
         task: await this.tasksService.editTask(body, socketId),
       }),
-      'Error while editing a task',
+      'Error while editing a task.',
       this.logger,
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
+  @UseGuards(AuthGuard('jwt'), TaskOwner)
   @Patch(':taskId')
   async toggleStatus(
     @Param() { taskId }: TaskId,
@@ -90,12 +92,12 @@ export class TasksController {
         success: true,
         task: await this.tasksService.toggleStatus(taskId, socketId),
       }),
-      `Error when change status of the task (${taskId})`,
+      `Error while changing task status (ID: ${taskId}).`,
       this.logger,
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), TaskOwnerGuard)
+  @UseGuards(AuthGuard('jwt'), TaskOwner)
   @Delete(':taskId')
   async delete(
     @Param() { taskId }: TaskId,
@@ -106,10 +108,8 @@ export class TasksController {
         success: true,
         task: await this.tasksService.deleteTask(taskId, socketId),
       }),
-      'Error when deleting a task',
+      'Error while deleting a task.',
       this.logger,
     );
   }
-
-  private readonly logger = new Logger(TasksController.name);
 }

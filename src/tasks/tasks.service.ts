@@ -12,6 +12,10 @@ import { ITask, IGetTasksResponse } from './tasks.types';
 
 @Injectable()
 export class TasksService {
+  private readonly MAX_DEPTH = 5;
+  private readonly MAX_SUBTASKS = 25;
+  private readonly MAX_UNVERIFIED_TASKS = 10;
+
   constructor(
     private prisma: PrismaService,
     private tasksGateway: TasksGateway,
@@ -22,19 +26,20 @@ export class TasksService {
     socketId: string,
   ): Promise<ITask> {
     const { userId, parentTaskId, folderId } = payload;
+
     await this.validateTaskCreation(userId);
 
     if (parentTaskId) {
       await this.getTaskById(parentTaskId);
       const depth = await this.getTaskDepth(parentTaskId);
-      if (depth >= 5)
+      if (depth >= this.MAX_DEPTH)
         throw new UnprocessableEntityException(
-          'Maximum task depth of 5 reached',
+          `Maximum task depth of ${this.MAX_DEPTH} reached.`,
         );
-      await this.subtaskCountValidation(parentTaskId);
+      await this.validateSubtasksCount(parentTaskId);
     }
 
-    if (folderId) await this.folderIdValidation(folderId, userId);
+    if (folderId) await this.validateFolderOwnership(folderId, userId);
 
     const task = await this.prisma.task.create({ data: payload });
     this.tasksGateway.emitTaskCreated(task, socketId);
@@ -80,20 +85,20 @@ export class TasksService {
 
       if (allSubtaskIds.includes(parentTaskId))
         throw new UnprocessableEntityException(
-          'A parent task cannot be moved down the hierarchy',
+          'A parent task cannot be moved down the hierarchy.',
         );
 
-      await this.subtaskCountValidation(parentTaskId);
+      await this.validateSubtasksCount(parentTaskId);
 
       const targetDepth = await this.getTaskDepth(parentTaskId);
       const currentMaxDepth = await this.getMaxSubtaskDepth(id, 1);
-      if (targetDepth + currentMaxDepth > 5)
+      if (targetDepth + currentMaxDepth > this.MAX_DEPTH)
         throw new UnprocessableEntityException(
-          'Moving this task would exceed the maximum depth of 5',
+          `Moving this task would exceed the maximum depth of ${this.MAX_DEPTH}.`,
         );
     }
 
-    if (folderId) await this.folderIdValidation(folderId, userId);
+    if (folderId) await this.validateFolderOwnership(folderId, userId);
 
     const updated = await this.prisma.task.update({
       where: { id },
@@ -123,9 +128,22 @@ export class TasksService {
     return deleted;
   }
 
-  private async isUserVerified(userId: string): Promise<boolean> {
+  // --- Private helper methods ---
+
+  private async validateTaskCreation(userId: string) {
+    if (
+      !(await this.isUserVerified(userId)) &&
+      (await this.getUserTaskCount(userId)) >= this.MAX_UNVERIFIED_TASKS
+    ) {
+      throw new ForbiddenException(
+        `Unverified users cannot create more than ${this.MAX_UNVERIFIED_TASKS} tasks.`,
+      );
+    }
+  }
+
+  private async isUserVerified(id: string): Promise<boolean> {
     const { isVerified } = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id },
       select: { isVerified: true },
     });
     return isVerified;
@@ -146,25 +164,14 @@ export class TasksService {
       include: { subtasks: includeSubtasks },
     });
 
-    if (!task) throw new NotFoundException(`Task with id: '${id}' not found`);
+    if (!task) throw new NotFoundException(`Task (ID: ${id}) not found.`);
 
     return task;
   }
 
-  private async validateTaskCreation(userId: string): Promise<void> {
-    if (
-      !(await this.isUserVerified(userId)) &&
-      (await this.getUserTaskCount(userId)) >= 10
-    ) {
-      throw new ForbiddenException(
-        'Unverified users cannot create more than ten tasks',
-      );
-    }
-  }
-
-  private async getAllSubtaskIds(taskId: string): Promise<string[]> {
+  private async getAllSubtaskIds(parentTaskId: string): Promise<string[]> {
     const subtasks = await this.prisma.task.findMany({
-      where: { parentTaskId: taskId },
+      where: { parentTaskId },
       select: { id: true },
     });
 
@@ -179,12 +186,12 @@ export class TasksService {
 
   private async getTaskWithSubtasks(taskId: string): Promise<ITask> {
     const task = await this.getTaskById(taskId, true);
-    const subtasksWithChildren = await Promise.all(
+    const subtasks = await Promise.all(
       task.subtasks.map(
         async (subtask: ITask) => await this.getTaskWithSubtasks(subtask.id),
       ),
     );
-    return { ...task, subtasks: subtasksWithChildren };
+    return { ...task, subtasks };
   }
 
   private async getTaskDepth(taskId: string): Promise<number> {
@@ -203,19 +210,19 @@ export class TasksService {
       SELECT MAX(depth) as depth FROM task_hierarchy;
     `;
 
-    return result[0]?.depth || 1;
+    return result[0]?.depth ?? 1;
   }
 
-  private async subtaskCountValidation(parentTaskId: string): Promise<void> {
-    const subtasksCount = await this.prisma.task.count({
+  private async validateSubtasksCount(parentTaskId: string) {
+    const count = await this.prisma.task.count({
       where: {
         parentTaskId,
       },
     });
 
-    if (subtasksCount >= 25)
+    if (count >= this.MAX_SUBTASKS)
       throw new UnprocessableEntityException(
-        'Maximum number of subtasks (25) reached',
+        `Maximum number of subtasks ${this.MAX_SUBTASKS} reached.`,
       );
   }
 
@@ -230,11 +237,11 @@ export class TasksService {
 
     if (subtasks.length === 0) return depth;
 
-    const subtaskDepths = await Promise.all(
+    const subtaskDepth = await Promise.all(
       subtasks.map((subtask) => this.getMaxSubtaskDepth(subtask.id, depth + 1)),
     );
 
-    return Math.max(...subtaskDepths);
+    return Math.max(...subtaskDepth);
   }
 
   private buildTaskWhereInput(
@@ -242,6 +249,7 @@ export class TasksService {
   ): Prisma.TaskWhereInput {
     const { taskId, completed, userId, topLayerTasks, folderId, title } =
       payload;
+
     return Object.assign(
       {},
       taskId && { id: taskId },
@@ -258,18 +266,17 @@ export class TasksService {
     );
   }
 
-  private async folderIdValidation(id: string, userId: string): Promise<void> {
+  private async validateFolderOwnership(id: string, userId: string) {
     const folder = await this.prisma.folder.findUnique({
       where: { id },
       select: { userId: true },
     });
 
-    if (!folder)
-      throw new NotFoundException(`Folder with id (${id}) not found`);
+    if (!folder) throw new NotFoundException(`Folder (ID: ${id}) not found.`);
 
     if (folder.userId !== userId)
       throw new ForbiddenException(
-        `User with ID (${userId}) doesn't own this folder`,
+        `User (ID: ${userId}) doesn't own this folder.`,
       );
   }
 }
