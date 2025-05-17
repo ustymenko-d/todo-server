@@ -1,13 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Prisma } from '@prisma/client';
+import { PrismaWhereInput } from 'src/common/common.types';
 import { PrismaService } from 'src/prisma/prisma.service';
-
-type CleanupConditions<T extends keyof PrismaService> = T extends 'refreshToken'
-  ? Prisma.RefreshTokenWhereInput
-  : T extends 'user'
-    ? Prisma.UserWhereInput
-    : never;
 
 @Injectable()
 export class CleanupService {
@@ -28,7 +22,7 @@ export class CleanupService {
   }
 
   private async executeCleanup<T extends keyof PrismaService>(
-    tasks: { entity: T; conditions: CleanupConditions<T> }[],
+    tasks: { entity: T; conditions: PrismaWhereInput<T> }[],
   ) {
     await Promise.all(
       tasks.map(({ entity, conditions }) => this.cleanup(entity, conditions)),
@@ -37,7 +31,7 @@ export class CleanupService {
 
   private async cleanup<T extends keyof PrismaService>(
     entity: T,
-    conditions: CleanupConditions<T>,
+    conditions: PrismaWhereInput<T>,
   ) {
     const entityString = String(entity);
     try {
@@ -58,11 +52,11 @@ export class CleanupService {
     }
   }
 
-  private getExpiredTokenConditions(): CleanupConditions<'refreshToken'> {
+  private getExpiredTokenConditions(): PrismaWhereInput<'refreshToken'> {
     return { OR: [{ expiresAt: { lt: new Date() } }, { revoked: true }] };
   }
 
-  private getUnverifiedUserConditions(): CleanupConditions<'user'> {
+  private getUnverifiedUserConditions(): PrismaWhereInput<'user'> {
     return { isVerified: false, createdAt: { lt: this.getDateDaysAgo(3) } };
   }
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { WebSocketGateway } from '@nestjs/websockets';
 import { BaseGateway } from './base.gateway';
-import { ITask } from 'src/tasks/task.types';
+import { ITask } from 'src/tasks/tasks.types';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

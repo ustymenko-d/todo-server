@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TasksGateway } from 'src/sockets/tasks.gateway';
 import { GetTasksRequest, Task, TaskBase } from './tasks.dto';
-import { ITask, IGetTasksResponse } from './task.types';
+import { ITask, IGetTasksResponse } from './tasks.types';
 
 @Injectable()
 export class TasksService {
