@@ -13,7 +13,7 @@ import { TokensService } from './tokens.service';
       imports: [],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET', 'default_secret'),
-        signOptions: { expiresIn: '1h' },
+        signOptions: { expiresIn: '1m' },
       }),
       inject: [ConfigService],
     }),
