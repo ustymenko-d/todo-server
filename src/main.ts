@@ -28,7 +28,7 @@ const getValidationPipe = (): ValidationPipe =>
   });
 
 const getCorsOptions = (origin?: string) => ({
-  origin: origin ?? '*',
+  origin: process.env.NODE_ENV === 'development' ? true : origin,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   credentials: true,
 });
