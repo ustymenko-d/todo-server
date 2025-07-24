@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsEmail,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -34,4 +35,8 @@ export class AuthData extends PasswordBase {
 
   @IsBoolean()
   rememberMe: boolean;
+
+  @IsOptional()
+  @IsString()
+  recaptchaToken?: string;
 }

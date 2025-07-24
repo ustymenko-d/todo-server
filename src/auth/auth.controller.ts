@@ -9,6 +9,7 @@ import {
   Query,
   Get,
   Logger,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -18,6 +19,8 @@ import { CookiesService } from './cookies/cookies.service';
 import { IJwtUser, IResponseStatus } from 'src/common/common.types';
 import { IAuthResponse, IUserInfo } from './auth.types';
 import { handleRequest } from 'src/common/utils/requestHandler';
+import { RecaptchaGuard } from 'src/common/recaptcha.guard';
+import { StripRecaptchaInterceptor } from 'src/common/strip-recaptcha.interceptor';
 
 @Controller('auth')
 export class AuthController {
@@ -29,6 +32,8 @@ export class AuthController {
   ) {}
 
   @Post('signup')
+  @UseGuards(RecaptchaGuard)
+  @UseInterceptors(StripRecaptchaInterceptor)
   async signup(
     @Body() body: AuthData,
     @Res({ passthrough: true }) res: Response,
@@ -72,6 +77,8 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(RecaptchaGuard)
+  @UseInterceptors(StripRecaptchaInterceptor)
   async login(
     @Body() body: AuthData,
     @Res({ passthrough: true }) res: Response,
@@ -96,8 +103,8 @@ export class AuthController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('account-info')
+  @UseGuards(AuthGuard('jwt'))
   async getAccountInfo(@Req() req: { user: IJwtUser }): Promise<IUserInfo> {
     return handleRequest(
       async () => await this.authService.getAccountInfo(req.user.userId),
@@ -106,8 +113,8 @@ export class AuthController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('logout')
+  @UseGuards(AuthGuard('jwt'))
   async logout(
     @Req() req: Request & { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,
@@ -124,8 +131,9 @@ export class AuthController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Delete('delete-account')
+  @UseGuards(RecaptchaGuard, AuthGuard('jwt'))
+  @UseInterceptors(StripRecaptchaInterceptor)
   async deleteAccount(
     @Req() req: { user: IJwtUser },
     @Res({ passthrough: true }) res: Response,

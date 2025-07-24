@@ -11,6 +11,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FolderOwner } from './folders.guard';
@@ -20,6 +21,8 @@ import { IJwtUser } from 'src/common/common.types';
 import { Pagination } from 'src/common/common.dto';
 import { FolderId, FolderName } from './folders.dto';
 import { IFolderResponse, IGetFoldersResponse } from './folders.types';
+import { RecaptchaGuard } from 'src/common/recaptcha.guard';
+import { StripRecaptchaInterceptor } from 'src/common/strip-recaptcha.interceptor';
 
 @Controller('folders')
 export class FoldersController {
@@ -27,8 +30,9 @@ export class FoldersController {
 
   constructor(private readonly foldersService: FoldersService) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Post()
+  @UseGuards(RecaptchaGuard, AuthGuard('jwt'))
+  @UseInterceptors(StripRecaptchaInterceptor)
   async create(
     @Req() req: { user: IJwtUser },
     @Body() { name }: FolderName,
@@ -48,8 +52,8 @@ export class FoldersController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get()
+  @UseGuards(AuthGuard('jwt'))
   async get(
     @Req() req: { user: IJwtUser },
     @Query() query: Pagination & FolderName,
@@ -69,8 +73,8 @@ export class FoldersController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Patch(':folderId')
+  @UseGuards(AuthGuard('jwt'), FolderOwner)
   async rename(
     @Param() { folderId }: FolderId,
     @Body() { name }: FolderName,
@@ -91,8 +95,8 @@ export class FoldersController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), FolderOwner)
   @Delete(':folderId')
+  @UseGuards(AuthGuard('jwt'), FolderOwner)
   async delete(
     @Param() { folderId }: FolderId,
     @Headers('x-socket-id') socketId?: string,

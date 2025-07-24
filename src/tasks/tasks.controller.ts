@@ -10,6 +10,7 @@ import {
   Put,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { TaskOwner } from './tasks.guard';
@@ -18,6 +19,8 @@ import { GetTasksRequest, TaskBase, Task, TaskId } from './tasks.dto';
 import { IJwtUser } from 'src/common/common.types';
 import { ITaskResponse, IGetTasksResponse } from './tasks.types';
 import { handleRequest } from 'src/common/utils/requestHandler';
+import { RecaptchaGuard } from 'src/common/recaptcha.guard';
+import { StripRecaptchaInterceptor } from 'src/common/strip-recaptcha.interceptor';
 
 @Controller('tasks')
 export class TasksController {
@@ -25,8 +28,9 @@ export class TasksController {
 
   constructor(private readonly tasksService: TasksService) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('create')
+  @UseGuards(RecaptchaGuard, AuthGuard('jwt'))
+  @UseInterceptors(StripRecaptchaInterceptor)
   async create(
     @Req() req: { user: IJwtUser },
     @Body() body: TaskBase,
@@ -48,8 +52,8 @@ export class TasksController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('get')
+  @UseGuards(AuthGuard('jwt'))
   async get(
     @Req() req: { user: IJwtUser },
     @Body() body: GetTasksRequest,
@@ -65,8 +69,8 @@ export class TasksController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), TaskOwner)
   @Put()
+  @UseGuards(AuthGuard('jwt'), TaskOwner)
   async edit(
     @Body() body: Task,
     @Headers('x-socket-id') socketId?: string,
@@ -81,8 +85,8 @@ export class TasksController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), TaskOwner)
   @Patch(':taskId')
+  @UseGuards(AuthGuard('jwt'), TaskOwner)
   async toggleStatus(
     @Param() { taskId }: TaskId,
     @Headers('x-socket-id') socketId?: string,
@@ -97,8 +101,8 @@ export class TasksController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'), TaskOwner)
   @Delete(':taskId')
+  @UseGuards(AuthGuard('jwt'), TaskOwner)
   async delete(
     @Param() { taskId }: TaskId,
     @Headers('x-socket-id') socketId?: string,
