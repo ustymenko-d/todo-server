@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { PrismaModule } from 'src/prisma/prisma.module';
+import { DatabaseModule } from 'src/database/database.module';
 import { PasswordModule } from './password/password.module';
 import { CookiesModule } from './cookies/cookies.module';
 import { TokensModule } from './tokens/tokens.module';
@@ -11,7 +11,7 @@ import { MailService } from './mail/mail.service';
 
 @Module({
   imports: [
-    PrismaModule,
+    DatabaseModule,
     forwardRef(() => PasswordModule),
     CookiesModule,
     TokensModule,

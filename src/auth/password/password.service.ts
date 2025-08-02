@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { TokensService } from '../tokens/tokens.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { DatabaseService } from 'src/database/database.service';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from '../auth.service';
 import HashHandler from 'src/common/utils/HashHandler';
@@ -12,7 +12,7 @@ export class PasswordService {
     private readonly authService: AuthService,
     private readonly tokenService: TokensService,
     private readonly mailService: MailService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: DatabaseService,
   ) {}
 
   async sendResetPasswordEmail(email: string) {

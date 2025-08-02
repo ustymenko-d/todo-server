@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { DatabaseService } from 'src/database/database.service';
 import { v4 as uuidv4 } from 'uuid';
 import { ITokenPair, IUser } from 'src/auth/auth.types';
 import { IJwtUser } from '../../common/common.types';
@@ -19,7 +19,7 @@ export class TokensService {
     private readonly jwtService: JwtService,
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: DatabaseService,
     private readonly configService: ConfigService,
   ) {}
 
