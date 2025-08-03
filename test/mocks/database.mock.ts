@@ -14,6 +14,11 @@ export const mockDatabase = {
     deleteMany: jest.fn(),
   },
   folder: {
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+    findMany: jest.fn(),
     findUnique: jest.fn(),
   },
   refreshToken: {

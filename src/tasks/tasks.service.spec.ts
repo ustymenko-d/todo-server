@@ -3,13 +3,13 @@ import { ForbiddenException } from '@nestjs/common';
 import { Task } from './tasks.dto';
 import { IGetTasksRequest } from './tasks.types';
 import { mockDatabase } from 'test/mocks/database.mock';
-import { mockGateway, mockTask } from 'test/mocks/tasks.mock';
+import { mockTasksGateway, mockTask } from 'test/mocks/tasks.mock';
 
 describe('TasksService', () => {
   let service: TasksService;
 
   beforeEach(() => {
-    service = new TasksService(mockDatabase as any, mockGateway as any);
+    service = new TasksService(mockDatabase as any, mockTasksGateway as any);
     jest.clearAllMocks();
   });
 
@@ -23,7 +23,10 @@ describe('TasksService', () => {
       const result = await service.createTask(payload, 'socket');
 
       expect(mockDatabase.task.create).toHaveBeenCalledWith({ data: payload });
-      expect(mockGateway.emitTaskCreated).toHaveBeenCalledWith(task, 'socket');
+      expect(mockTasksGateway.emitTaskCreated).toHaveBeenCalledWith(
+        task,
+        'socket',
+      );
       expect(result).toEqual(task);
     });
 
@@ -51,7 +54,7 @@ describe('TasksService', () => {
         where: { id: '1' },
         data: { completed: true },
       });
-      expect(mockGateway.emitTaskToggleStatus).toHaveBeenCalled();
+      expect(mockTasksGateway.emitTaskToggleStatus).toHaveBeenCalled();
       expect(result).toEqual(task);
     });
   });
@@ -66,7 +69,10 @@ describe('TasksService', () => {
       expect(mockDatabase.task.delete).toHaveBeenCalledWith({
         where: { id: '1' },
       });
-      expect(mockGateway.emitTaskDeleted).toHaveBeenCalledWith(task, 'socket');
+      expect(mockTasksGateway.emitTaskDeleted).toHaveBeenCalledWith(
+        task,
+        'socket',
+      );
       expect(result).toEqual(task);
     });
   });
@@ -89,7 +95,10 @@ describe('TasksService', () => {
         where: { id: input.id },
         data: input,
       });
-      expect(mockGateway.emitTaskUpdated).toHaveBeenCalledWith(input, 'socket');
+      expect(mockTasksGateway.emitTaskUpdated).toHaveBeenCalledWith(
+        input,
+        'socket',
+      );
       expect(result).toEqual(input);
     });
   });
@@ -97,19 +106,35 @@ describe('TasksService', () => {
   describe('getTasks()', () => {
     it('should return paginated tasks', async () => {
       const task = mockTask();
-      const req: IGetTasksRequest = { page: 1, limit: 10, userId: 'user-id' };
-      mockDatabase.$transaction.mockResolvedValueOnce([[{ id: '1' }], 1]);
-      service['getTaskWithSubtasks'] = jest.fn().mockResolvedValueOnce(task);
+      const req: IGetTasksRequest = {
+        page: 1,
+        limit: 10,
+        userId: 'user-id',
+      };
+
+      mockDatabase.$transaction.mockResolvedValueOnce([[{ id: task.id }], 1]);
+
+      mockDatabase.task.findUnique.mockImplementation(({ where }) => {
+        if (where.id === task.id) {
+          return Promise.resolve({ ...task, subtasks: [] });
+        }
+        return Promise.resolve(null);
+      });
 
       const result = await service.getTasks(req);
 
-      expect(mockDatabase.$transaction).toHaveBeenCalled();
       expect(result).toEqual({
-        tasks: [task],
+        tasks: [{ ...task, subtasks: [] }],
         page: 1,
         limit: 10,
         total: 1,
         pages: 1,
+      });
+
+      expect(mockDatabase.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockDatabase.task.findUnique).toHaveBeenCalledWith({
+        where: { id: task.id },
+        include: { subtasks: true },
       });
     });
   });

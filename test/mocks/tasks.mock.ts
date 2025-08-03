@@ -36,7 +36,7 @@ export const mockSubtask = (overrides: Partial<ITask> = {}): ITask => ({
   ...overrides,
 });
 
-export const mockGateway = {
+export const mockTasksGateway = {
   emitTaskCreated: jest.fn(),
   emitTaskUpdated: jest.fn(),
   emitTaskDeleted: jest.fn(),
