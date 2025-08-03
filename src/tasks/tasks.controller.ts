@@ -16,11 +16,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { TaskOwner } from './tasks.guard';
 import { TasksService } from './tasks.service';
 import { GetTasksRequest, TaskBase, Task, TaskId } from './tasks.dto';
-import { IJwtUser } from 'src/common/common.types';
+import { IJwtUser } from '@src/common/common.types';
 import { ITaskResponse, IGetTasksResponse } from './tasks.types';
-import { handleRequest } from 'src/common/utils/requestHandler';
-import { RecaptchaGuard } from 'src/common/recaptcha.guard';
-import { StripRecaptchaInterceptor } from 'src/common/strip-recaptcha.interceptor';
+import { RecaptchaGuard } from '@src/common/recaptcha.guard';
+import { StripRecaptchaInterceptor } from '@src/common/strip-recaptcha.interceptor';
+import { handleRequest } from '@src/common/utils/requestHandler';
 
 @Controller('tasks')
 export class TasksController {

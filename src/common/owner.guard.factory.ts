@@ -7,7 +7,7 @@ import {
   NotFoundException,
   Type,
 } from '@nestjs/common';
-import { DatabaseService } from 'src/database/database.service';
+import { DatabaseService } from '@src/database/database.service';
 import { WhereUniqueInput } from './common.types';
 import { Request } from 'express';
 

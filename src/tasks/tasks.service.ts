@@ -5,8 +5,8 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { DatabaseService } from 'src/database/database.service';
-import { TasksGateway } from 'src/sockets/tasks.gateway';
+import { DatabaseService } from '@src/database/database.service';
+import { TasksGateway } from '@src/sockets/tasks.gateway';
 import { Task } from './tasks.dto';
 import { ITask, IGetTasksResponse, IGetTasksRequest } from './tasks.types';
 
