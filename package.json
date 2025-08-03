@@ -1,8 +1,12 @@
 {
   "name": "todo-server",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "version": "1.0.0",
+  "description": "Server part of the todo application",
+  "author": {
+    "name": "Denys Ustymenko",
+    "email": "ustymenko.denys@gmail.com",
+    "url": "https://ustymenko.vercel.app"
+  },
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
