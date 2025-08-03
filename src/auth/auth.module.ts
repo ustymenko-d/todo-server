@@ -6,7 +6,7 @@ import { PasswordModule } from './password/password.module';
 import { CookiesModule } from './cookies/cookies.module';
 import { TokensModule } from './tokens/tokens.module';
 import { SocketsModule } from 'src/sockets/sockets.module';
-import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
+import { JwtStrategy } from 'src/common/jwt.strategy';
 import { MailService } from './mail/mail.service';
 
 @Module({

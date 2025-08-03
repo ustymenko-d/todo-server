@@ -3,7 +3,7 @@ import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { SocketsModule } from 'src/sockets/sockets.module';
-import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
+import { JwtStrategy } from 'src/common/jwt.strategy';
 
 @Module({
   imports: [DatabaseModule, SocketsModule],

@@ -3,7 +3,7 @@ import { DatabaseModule } from 'src/database/database.module';
 import { SocketsModule } from 'src/sockets/sockets.module';
 import { FoldersService } from './folders.service';
 import { FoldersController } from './folders.controller';
-import { JwtStrategy } from 'src/common/strategies/jwt.strategy';
+import { JwtStrategy } from 'src/common/jwt.strategy';
 
 @Module({
   imports: [DatabaseModule, SocketsModule],
