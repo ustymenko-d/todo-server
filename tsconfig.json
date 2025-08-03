@@ -36,5 +36,10 @@
         "test/*"
       ]
     }
+  },
+  "_moduleAliases": {
+    "@src": "dist/src",
+    "@common": "dist/src/common",
+    "@modules": "dist/src/modules"
   }
 }
