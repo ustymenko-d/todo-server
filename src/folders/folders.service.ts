@@ -9,7 +9,7 @@ import { FoldersGateway } from 'src/sockets/folders.gateway';
 import {
   ICreateFolderPayload,
   IFolder,
-  TGetFoldersPayload,
+  IGetFoldersPayload,
   IGetFoldersResponse,
 } from './folders.types';
 
@@ -30,7 +30,7 @@ export class FoldersService {
     return folder;
   }
 
-  async getFolders(payload: TGetFoldersPayload): Promise<IGetFoldersResponse> {
+  async getFolders(payload: IGetFoldersPayload): Promise<IGetFoldersResponse> {
     const { page, limit } = payload;
     const skip = (page - 1) * limit;
     const where = this.buildFolderWhereInput(payload);
@@ -103,7 +103,7 @@ export class FoldersService {
   }
 
   private buildFolderWhereInput(
-    payload: TGetFoldersPayload,
+    payload: IGetFoldersPayload,
   ): Prisma.FolderWhereInput {
     const { userId, name } = payload;
     return Object.assign(

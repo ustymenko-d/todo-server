@@ -7,8 +7,8 @@ import {
 import { Prisma } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { TasksGateway } from 'src/sockets/tasks.gateway';
-import { GetTasksRequest, Task, TaskBase } from './tasks.dto';
-import { ITask, IGetTasksResponse } from './tasks.types';
+import { Task } from './tasks.dto';
+import { ITask, IGetTasksResponse, IGetTasksRequest } from './tasks.types';
 
 @Injectable()
 export class TasksService {
@@ -22,7 +22,7 @@ export class TasksService {
   ) {}
 
   async createTask(
-    payload: TaskBase & { userId: string },
+    payload: Omit<Task, 'id'>,
     socketId: string,
   ): Promise<ITask> {
     const { userId, parentTaskId, folderId } = payload;
@@ -46,9 +46,7 @@ export class TasksService {
     return task;
   }
 
-  async getTasks(
-    payload: GetTasksRequest & { userId: string },
-  ): Promise<IGetTasksResponse> {
+  async getTasks(payload: IGetTasksRequest): Promise<IGetTasksResponse> {
     const { page, limit } = payload;
     const skip = (page - 1) * limit;
     const where = this.buildTaskWhereInput(payload);
@@ -245,7 +243,7 @@ export class TasksService {
   }
 
   private buildTaskWhereInput(
-    payload: GetTasksRequest & { userId: string },
+    payload: IGetTasksRequest,
   ): Prisma.TaskWhereInput {
     const { taskId, completed, userId, topLayerTasks, folderId, title } =
       payload;

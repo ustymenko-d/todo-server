@@ -97,8 +97,6 @@ export class AuthService {
     await this.prisma.user.delete({ where: { id } });
   }
 
-  // --- Helper methods ---
-
   private async createUser(
     email: string,
     hashedPassword: string,
