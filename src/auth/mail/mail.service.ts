@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
   private readonly transporter: nodemailer.Transporter;
   private readonly frontendUrl: string;
   private readonly emailUser: string;
@@ -26,12 +27,21 @@ export class MailService {
     subject: string,
     html: string,
   ): Promise<void> {
-    await this.transporter.sendMail({
-      from: this.emailUser,
-      to,
-      subject,
-      html,
-    });
+    try {
+      await this.transporter.sendMail({
+        from: this.emailUser,
+        to,
+        subject,
+        html,
+      });
+    } catch (error) {
+      this.logger.error('Email sending error:', {
+        message: error.message,
+        code: error.code,
+        response: error.response,
+        stack: error.stack,
+      });
+    }
   }
 
   async sendVerificationEmail(
