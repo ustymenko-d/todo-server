@@ -13,6 +13,7 @@ import {
 import { mockPrisma } from 'test/mocks/prisma.mock';
 import { socketId } from 'test/mocks/sockets.mock';
 import { expectThrows } from 'test/utils/expectThrows';
+import { expectSuccess } from 'test/utils/expectSuccess';
 
 describe('TasksController', () => {
   let controller: TasksController;
@@ -22,8 +23,6 @@ describe('TasksController', () => {
   const getRequest: GetTasksRequest = { page: 1, limit: 10 };
   const editedTask: Task = mockTask({ title: 'Edited task' });
   const toggledTask = mockTask({ completed: true });
-
-  const expectSuccess = (task: Task) => ({ success: true, task });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -53,7 +52,9 @@ describe('TasksController', () => {
         { ...newTaskDto, userId: mockJwtUser.userId },
         socketId,
       );
-      expect(result).toEqual(expectSuccess(task));
+      expect(result).toEqual(
+        expectSuccess<Task>('Task created successfully.', task, 'task'),
+      );
     });
 
     it('throws when service fails', async () => {
@@ -100,7 +101,9 @@ describe('TasksController', () => {
       const result = await controller.edit(editedTask, socketId);
 
       expect(service.editTask).toHaveBeenCalledWith(editedTask, socketId);
-      expect(result).toEqual(expectSuccess(editedTask));
+      expect(result).toEqual(
+        expectSuccess<Task>('Task edited successfully.', editedTask, 'task'),
+      );
     });
 
     it('throws when service fails', async () => {
@@ -122,7 +125,13 @@ describe('TasksController', () => {
         toggledTask.id,
         socketId,
       );
-      expect(result).toEqual(expectSuccess(toggledTask));
+      expect(result).toEqual(
+        expectSuccess<Task>(
+          'Task status changed successfully.',
+          toggledTask,
+          'task',
+        ),
+      );
     });
 
     it('throws when service fails', async () => {
@@ -143,7 +152,9 @@ describe('TasksController', () => {
       );
 
       expect(service.deleteTask).toHaveBeenCalledWith(toggledTask.id, socketId);
-      expect(result).toEqual(expectSuccess(toggledTask));
+      expect(result).toEqual(
+        expectSuccess<Task>('Task deleted successfully.', toggledTask, 'task'),
+      );
     });
 
     it('throws when service fails', async () => {

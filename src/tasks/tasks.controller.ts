@@ -39,6 +39,7 @@ export class TasksController {
     return handleRequest(
       async () => ({
         success: true,
+        message: 'Task created successfully.',
         task: await this.tasksService.createTask(
           {
             ...body,
@@ -78,6 +79,7 @@ export class TasksController {
     return handleRequest(
       async () => ({
         success: true,
+        message: 'Task edited successfully.',
         task: await this.tasksService.editTask(body, socketId),
       }),
       'Error while editing a task.',
@@ -94,6 +96,7 @@ export class TasksController {
     return handleRequest(
       async () => ({
         success: true,
+        message: 'Task status changed successfully.',
         task: await this.tasksService.toggleStatus(taskId, socketId),
       }),
       `Error while changing task status (ID: ${taskId}).`,
@@ -110,6 +113,7 @@ export class TasksController {
     return handleRequest(
       async () => ({
         success: true,
+        message: 'Task deleted successfully.',
         task: await this.tasksService.deleteTask(taskId, socketId),
       }),
       'Error while deleting a task.',

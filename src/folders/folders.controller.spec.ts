@@ -13,6 +13,7 @@ import { mockPrisma } from 'test/mocks/prisma.mock';
 import { IFolder } from './folders.types';
 import { socketId } from 'test/mocks/sockets.mock';
 import { expectThrows } from 'test/utils/expectThrows';
+import { expectSuccess } from 'test/utils/expectSuccess';
 
 describe('FoldersController', () => {
   let controller: FoldersController;
@@ -22,12 +23,6 @@ describe('FoldersController', () => {
   const folderName: FolderName = { name: 'Folder name' };
   const getRequest = { page: 1, limit: 10, name: '' };
   const renamedFolder: FolderName = { name: 'Renamed folder' };
-
-  const expectSuccess = (message: string, folder: IFolder) => ({
-    success: true,
-    message,
-    folder,
-  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -58,7 +53,11 @@ describe('FoldersController', () => {
         socketId,
       );
       expect(result).toEqual(
-        expectSuccess('Folder created successfully.', folder),
+        expectSuccess<IFolder>(
+          'Folder created successfully.',
+          folder,
+          'folder',
+        ),
       );
     });
 
@@ -107,7 +106,11 @@ describe('FoldersController', () => {
         socketId,
       );
       expect(result).toEqual(
-        expectSuccess('Folder renamed successfully.', folder),
+        expectSuccess<IFolder>(
+          'Folder renamed successfully.',
+          folder,
+          'folder',
+        ),
       );
     });
 
@@ -131,7 +134,11 @@ describe('FoldersController', () => {
         socketId,
       );
       expect(result).toEqual(
-        expectSuccess('Folder deleted successfully.', folder),
+        expectSuccess<IFolder>(
+          'Folder deleted successfully.',
+          folder,
+          'folder',
+        ),
       );
     });
 
