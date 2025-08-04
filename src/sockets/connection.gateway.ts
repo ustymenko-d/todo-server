@@ -7,8 +7,6 @@ import {
   OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  SubscribeMessage,
-  MessageBody,
 } from '@nestjs/websockets';
 
 @Injectable()
@@ -44,11 +42,5 @@ export class ConnectionGateway
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
-  }
-
-  @SubscribeMessage('ping')
-  handlePing(@MessageBody() data: any): string {
-    console.log('Received ping: ', data);
-    return 'pong';
   }
 }

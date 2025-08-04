@@ -75,15 +75,4 @@ describe('ConnectionGateway', () => {
       logSpy.mockRestore();
     });
   });
-
-  describe('handlePing', () => {
-    it('should respond with pong', () => {
-      const data = { foo: 'bar' };
-      const logSpy = jest.spyOn(console, 'log').mockImplementation();
-      const result = gateway.handlePing(data);
-      expect(logSpy).toHaveBeenCalledWith('Received ping: ', data);
-      expect(result).toBe('pong');
-      logSpy.mockRestore();
-    });
-  });
 });
