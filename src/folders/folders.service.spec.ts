@@ -1,152 +1,175 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { FoldersService } from './folders.service';
-import { mockDatabase } from 'test/mocks/database.mock';
-import { mockFolder, mockFoldersGateway } from 'test/mocks/folders.mock';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { FoldersGateway } from 'src/sockets/folders.gateway';
+import { mockPrisma } from 'test/mocks/prisma.mock';
+import {
+  mockFolder,
+  mockFoldersGateway,
+  TFoldersGatewayMock,
+} from 'test/mocks/folders.mock';
 import { IGetFoldersPayload } from './folders.types';
+import { socketId } from 'test/mocks/sockets.mock';
 
 describe('FoldersService', () => {
   let service: FoldersService;
+  let gatewayMock: TFoldersGatewayMock;
+
+  const userId = 'user-id';
+  const newFolderPayload = { name: 'New Folder', userId };
+  const defaultFolder = mockFolder();
+  const oldFolder = mockFolder({ name: 'Old name' });
+  const updatedFolder = mockFolder({ name: 'New name' });
+  const deletedFolder = mockFolder();
+
+  const expectForbidden = async (count: number, isVerified: boolean) => {
+    mockPrisma.user.findUnique.mockResolvedValue({ isVerified });
+    mockPrisma.folder.count.mockResolvedValue(count);
+
+    await expect(service.createFolder(newFolderPayload)).rejects.toThrow(
+      ForbiddenException,
+    );
+  };
 
   beforeEach(async () => {
-    service = new FoldersService(
-      mockDatabase as any,
-      mockFoldersGateway as any,
-    );
     jest.clearAllMocks();
+
+    gatewayMock = mockFoldersGateway();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        FoldersService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: FoldersGateway, useValue: gatewayMock },
+      ],
+    }).compile();
+
+    service = module.get(FoldersService);
   });
 
   describe('createFolder', () => {
-    it('should create folder and emit event', async () => {
-      const folder = mockFolder();
-      mockDatabase.user.findUnique.mockResolvedValue({ isVerified: true });
-      mockDatabase.folder.count.mockResolvedValue(0);
-      mockDatabase.folder.create.mockResolvedValue(folder);
+    it('creates folder and emits event for allowed user', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ isVerified: true });
+      mockPrisma.folder.count.mockResolvedValue(0);
+      mockPrisma.folder.create.mockResolvedValue(defaultFolder);
 
-      const result = await service.createFolder(
-        { name: 'New Folder', userId: 'user-id' },
-        'socket-id',
-      );
+      const result = await service.createFolder(newFolderPayload, socketId);
 
-      expect(mockDatabase.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 'user-id' },
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
         select: { isVerified: true },
       });
-      expect(mockDatabase.folder.count).toHaveBeenCalledWith({
-        where: { userId: 'user-id' },
+      expect(mockPrisma.folder.count).toHaveBeenCalledWith({
+        where: { userId },
       });
-      expect(mockDatabase.folder.create).toHaveBeenCalledWith({
-        data: { name: 'New Folder', userId: 'user-id' },
+      expect(mockPrisma.folder.create).toHaveBeenCalledWith({
+        data: newFolderPayload,
       });
-      expect(mockFoldersGateway.emitFolderCreated).toHaveBeenCalledWith(
-        folder,
-        'socket-id',
+      expect(gatewayMock.emitFolderCreated).toHaveBeenCalledWith(
+        defaultFolder,
+        socketId,
       );
-      expect(result).toEqual(folder);
+      expect(result).toEqual(defaultFolder);
     });
 
-    it('should throw ForbiddenException if unverified user has 3 or more folders', async () => {
-      mockDatabase.user.findUnique.mockResolvedValue({ isVerified: false });
-      mockDatabase.folder.count.mockResolvedValue(3);
-
-      await expect(
-        service.createFolder({ name: 'New Folder', userId: 'user-id' }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should throw ForbiddenException if verified user has 25 or more folders', async () => {
-      mockDatabase.user.findUnique.mockResolvedValue({ isVerified: true });
-      mockDatabase.folder.count.mockResolvedValue(25);
-
-      await expect(
-        service.createFolder({ name: 'New Folder', userId: 'user-id' }),
-      ).rejects.toThrow(ForbiddenException);
+    test.each`
+      count | isVerified | desc
+      ${3}  | ${false}   | ${'unverified has ≥3 folders'}
+      ${25} | ${true}    | ${'verified has ≥25 folders'}
+    `('throws ForbiddenException if $desc', async ({ count, isVerified }) => {
+      await expectForbidden(count, isVerified);
     });
   });
 
   describe('getFolders', () => {
-    it('should return paginated folders response', async () => {
-      const folders = [mockFolder()];
+    it('returns paginated result', async () => {
+      const folders = [defaultFolder];
       const total = 1;
-
       const req: IGetFoldersPayload = {
-        page: 1,
-        limit: 10,
-        name: '',
-        userId: 'user-id',
+        page: 2,
+        limit: 5,
+        name: 'abc',
+        userId,
       };
 
-      mockDatabase.$transaction.mockResolvedValueOnce([folders, total]);
+      mockPrisma.$transaction.mockResolvedValueOnce([folders, total]);
+      const res = await service.getFolders(req);
 
-      const result = await service.getFolders(req);
-
-      expect(mockDatabase.$transaction).toHaveBeenCalledTimes(1);
-      expect(result).toEqual({
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith([
+        mockPrisma.folder.findMany({
+          where: {
+            userId,
+            name: { contains: req.name, mode: 'insensitive' },
+          },
+          skip: (req.page - 1) * req.limit,
+          take: req.limit,
+        }),
+        mockPrisma.folder.count({
+          where: {
+            userId,
+            name: { contains: req.name, mode: 'insensitive' },
+          },
+        }),
+      ]);
+      expect(res).toEqual({
         folders,
-        page: 1,
-        limit: 10,
+        page: req.page,
+        limit: req.limit,
         total,
-        pages: 1,
+        pages: Math.ceil(total / req.limit),
       });
     });
   });
 
   describe('renameFolder', () => {
-    it('should rename folder and emit event', async () => {
-      const oldFolder = mockFolder({ name: 'Old name' });
-      const updatedFolder = mockFolder({ name: 'New name' });
+    it('renames existing folder and emits event', async () => {
+      mockPrisma.folder.findUnique.mockResolvedValue(oldFolder);
+      mockPrisma.folder.update.mockResolvedValue(updatedFolder);
 
-      mockDatabase.folder.findUnique.mockResolvedValue(oldFolder);
-      mockDatabase.folder.update.mockResolvedValue(updatedFolder);
-
-      const result = await service.renameFolder(
+      const res = await service.renameFolder(
         'folder-id',
-        'New name',
-        'socket-id',
+        updatedFolder.name,
+        socketId,
       );
 
-      expect(mockDatabase.folder.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.folder.findUnique).toHaveBeenCalledWith({
         where: { id: 'folder-id' },
         select: { name: true },
       });
-
-      expect(mockDatabase.folder.update).toHaveBeenCalledWith({
+      expect(mockPrisma.folder.update).toHaveBeenCalledWith({
         where: { id: 'folder-id' },
-        data: { name: 'New name' },
+        data: { name: updatedFolder.name },
       });
-
-      expect(mockFoldersGateway.emitFolderRenamed).toHaveBeenCalledWith(
+      expect(gatewayMock.emitFolderRenamed).toHaveBeenCalledWith(
         updatedFolder,
-        'socket-id',
+        socketId,
       );
-      expect(result).toEqual(updatedFolder);
+      expect(res).toEqual(updatedFolder);
     });
 
-    it('should throw NotFoundException if folder not found', async () => {
-      mockDatabase.folder.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.renameFolder('folder-id', 'New name'),
-      ).rejects.toThrow(NotFoundException);
+    it('throws NotFoundException when folder not found', async () => {
+      mockPrisma.folder.findUnique.mockResolvedValue(null);
+      await expect(service.renameFolder('folder-id', 'any')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('deleteFolder', () => {
-    it('should delete folder and emit event', async () => {
-      const deletedFolder = mockFolder();
+    it('deletes folder and emits event', async () => {
+      mockPrisma.folder.delete.mockResolvedValue(deletedFolder);
 
-      mockDatabase.folder.delete.mockResolvedValue(deletedFolder);
+      const res = await service.deleteFolder('folder-id', socketId);
 
-      const result = await service.deleteFolder('folder-id', 'socket-id');
-
-      expect(mockDatabase.folder.delete).toHaveBeenCalledWith({
+      expect(mockPrisma.folder.delete).toHaveBeenCalledWith({
         where: { id: 'folder-id' },
       });
-
-      expect(mockFoldersGateway.emitFolderDeleted).toHaveBeenCalledWith(
+      expect(gatewayMock.emitFolderDeleted).toHaveBeenCalledWith(
         deletedFolder,
-        'socket-id',
+        socketId,
       );
-      expect(result).toEqual(deletedFolder);
+      expect(res).toEqual(deletedFolder);
     });
   });
 });

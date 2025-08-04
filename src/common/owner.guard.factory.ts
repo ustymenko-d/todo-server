@@ -7,17 +7,17 @@ import {
   NotFoundException,
   Type,
 } from '@nestjs/common';
-import { DatabaseService } from '@src/database/database.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { WhereUniqueInput } from './common.types';
 import { Request } from 'express';
 
-export function OwnerGuardFactory<T extends keyof DatabaseService>(
+export function OwnerGuardFactory<T extends keyof PrismaService>(
   entityName: T,
   getId: (req: Request) => string | undefined,
 ): Type<CanActivate> {
   @Injectable()
   class OwnerGuard implements CanActivate {
-    constructor(private readonly prisma: DatabaseService) {}
+    constructor(private readonly prisma: PrismaService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const request = context.switchToHttp().getRequest();

@@ -26,7 +26,6 @@ describe('BaseGateway', () => {
   let gateway: TestGateway;
   let configService: ConfigService;
 
-  // Єдиний mockServer — буде підставлений і протестований
   let mockServer: Partial<Server> & {
     engine: { on: jest.Mock };
     emit: jest.Mock;
@@ -59,7 +58,6 @@ describe('BaseGateway', () => {
     gateway = module.get(TestGateway);
     configService = module.get(ConfigService);
 
-    // Підставляємо наш мок
     (gateway as any).server = mockServer as any as Server;
   });
 
@@ -73,7 +71,6 @@ describe('BaseGateway', () => {
         expect.any(Function),
       );
 
-      // Імітація виклику callback-а для headers
       const headers: Record<string, string> = {};
       const cb = mockServer.engine.on.mock.calls[0][1];
       cb(headers);

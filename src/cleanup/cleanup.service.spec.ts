@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CleanupService } from './cleanup.service';
-import { DatabaseService } from 'src/database/database.service';
-import { mockDatabase } from 'test/mocks/database.mock';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { mockPrisma } from 'test/mocks/prisma.mock';
 
 describe('CleanupService', () => {
   let service: CleanupService;
@@ -9,16 +9,13 @@ describe('CleanupService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    mockDatabase.refreshToken.deleteMany.mockResolvedValue({ count: 3 });
-    mockDatabase.user.deleteMany.mockResolvedValue({ count: 1 });
+    mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 3 });
+    mockPrisma.user.deleteMany.mockResolvedValue({ count: 1 });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CleanupService,
-        {
-          provide: DatabaseService,
-          useValue: mockDatabase,
-        },
+        { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();
 
@@ -26,18 +23,23 @@ describe('CleanupService', () => {
   });
 
   it('should call deleteMany for refreshToken and user with correct conditions', async () => {
+    const expectedRefreshTokenWhere = {
+      OR: [{ expiresAt: { lt: expect.any(Date) } }, { revoked: true }],
+    };
+
+    const expectedUserWhere = {
+      isVerified: false,
+      createdAt: { lt: expect.any(Date) },
+    };
+
     await service.dailyCleaning();
 
-    expect(mockDatabase.refreshToken.deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.any(Object),
-      }),
+    expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedRefreshTokenWhere }),
     );
 
-    expect(mockDatabase.user.deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.any(Object),
-      }),
+    expect(mockPrisma.user.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedUserWhere }),
     );
   });
 
@@ -47,12 +49,31 @@ describe('CleanupService', () => {
     await service.dailyCleaning();
 
     expect(logSpy).toHaveBeenCalledWith('Starting daily cleaning...');
+    expect(logSpy).toHaveBeenCalledWith('Starting cleanup for refreshToken...');
+    expect(logSpy).toHaveBeenCalledWith('Deleted 3 refreshToken records.');
+    expect(logSpy).toHaveBeenCalledWith('Starting cleanup for user...');
+    expect(logSpy).toHaveBeenCalledWith('Deleted 1 user records.');
     expect(logSpy).toHaveBeenCalledWith('Daily cleaning is completed.');
+  });
+
+  it('should log if no records found during cleanup', async () => {
+    mockPrisma.refreshToken.deleteMany.mockResolvedValueOnce({ count: 0 });
+    mockPrisma.user.deleteMany.mockResolvedValueOnce({ count: 0 });
+
+    const logSpy = jest.spyOn(service['logger'], 'log');
+
+    await service.dailyCleaning();
+
+    expect(logSpy).toHaveBeenCalledWith(
+      'No refreshToken records found for cleanup.',
+    );
+    expect(logSpy).toHaveBeenCalledWith('No user records found for cleanup.');
   });
 
   it('should throw error and log if cleanup fails', async () => {
     const error = new Error('Test error');
-    mockDatabase.user.deleteMany.mockRejectedValueOnce(error);
+
+    mockPrisma.user.deleteMany.mockRejectedValueOnce(error);
 
     const errorSpy = jest.spyOn(service['logger'], 'error');
 

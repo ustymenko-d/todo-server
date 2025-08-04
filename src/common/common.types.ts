@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { DatabaseService } from 'src/database/database.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { Pagination } from './common.dto';
 
 export interface IPagination extends Pagination {
@@ -19,14 +19,13 @@ export interface IResponseStatus {
   message: string;
 }
 
-export type WhereUniqueInput<T extends keyof DatabaseService> =
-  T extends 'folder'
-    ? Prisma.FolderWhereUniqueInput
-    : T extends 'task'
-      ? Prisma.TaskWhereUniqueInput
-      : never;
+export type WhereUniqueInput<T extends keyof PrismaService> = T extends 'folder'
+  ? Prisma.FolderWhereUniqueInput
+  : T extends 'task'
+    ? Prisma.TaskWhereUniqueInput
+    : never;
 
-export type PrismaWhereInput<T extends keyof DatabaseService> =
+export type PrismaWhereInput<T extends keyof PrismaService> =
   T extends 'refreshToken'
     ? Prisma.RefreshTokenWhereInput
     : T extends 'user'

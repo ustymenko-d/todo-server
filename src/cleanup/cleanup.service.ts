@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaWhereInput } from 'src/common/common.types';
-import { DatabaseService } from 'src/database/database.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CleanupService {
   private readonly logger = new Logger(CleanupService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async dailyCleaning() {
@@ -21,7 +21,7 @@ export class CleanupService {
     this.logger.log('Daily cleaning is completed.');
   }
 
-  private async executeCleanup<T extends keyof DatabaseService>(
+  private async executeCleanup<T extends keyof PrismaService>(
     tasks: { entity: T; conditions: PrismaWhereInput<T> }[],
   ) {
     await Promise.all(
@@ -29,7 +29,7 @@ export class CleanupService {
     );
   }
 
-  private async cleanup<T extends keyof DatabaseService>(
+  private async cleanup<T extends keyof PrismaService>(
     entity: T,
     conditions: PrismaWhereInput<T>,
   ) {
@@ -61,8 +61,6 @@ export class CleanupService {
   }
 
   private getDateDaysAgo(days: number): Date {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date;
+    return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   }
 }

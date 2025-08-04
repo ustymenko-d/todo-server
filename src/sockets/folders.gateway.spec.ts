@@ -4,13 +4,13 @@ import {
   createMockConfigService,
   createMockSocketServer,
 } from 'test/mocks/sockets.mock';
-import { Server } from 'socket.io';
 import { ConfigService } from '@nestjs/config';
 import { mockFolder } from 'test/mocks/folders.mock';
 
 describe('FoldersGateway', () => {
   let gateway: FoldersGateway;
   let emitEntityEventSpy: jest.SpyInstance;
+  const folder = mockFolder();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,43 +24,27 @@ describe('FoldersGateway', () => {
     }).compile();
 
     gateway = module.get<FoldersGateway>(FoldersGateway);
-    (gateway as any).server = createMockSocketServer() as Server;
+    (gateway as any).server = createMockSocketServer();
 
-    emitEntityEventSpy = jest.spyOn<any, any>(gateway, 'emitEntityEvent');
+    emitEntityEventSpy = jest.spyOn(gateway as any, 'emitEntityEvent');
   });
 
-  const folder = mockFolder();
+  const testCases: Array<{
+    method: keyof FoldersGateway;
+    action: string;
+  }> = [
+    { method: 'emitFolderCreated', action: 'created' },
+    { method: 'emitFolderRenamed', action: 'renamed' },
+    { method: 'emitFolderDeleted', action: 'deleted' },
+  ];
 
-  describe('emitFolderCreated', () => {
-    it('should emit "folder:created" event', () => {
-      gateway.emitFolderCreated(folder, 'socket-id');
+  testCases.forEach(({ method, action }) => {
+    it(`should emit "folder:${action}" via ${method}`, () => {
+      (gateway[method] as any)(folder, 'socket-id');
+
       expect(emitEntityEventSpy).toHaveBeenCalledWith(
         'folder',
-        'created',
-        folder,
-        'socket-id',
-      );
-    });
-  });
-
-  describe('emitFolderRenamed', () => {
-    it('should emit "folder:renamed" event', () => {
-      gateway.emitFolderRenamed(folder, 'socket-id');
-      expect(emitEntityEventSpy).toHaveBeenCalledWith(
-        'folder',
-        'renamed',
-        folder,
-        'socket-id',
-      );
-    });
-  });
-
-  describe('emitFolderDeleted', () => {
-    it('should emit "folder:deleted" event', () => {
-      gateway.emitFolderDeleted(folder, 'socket-id');
-      expect(emitEntityEventSpy).toHaveBeenCalledWith(
-        'folder',
-        'deleted',
+        action,
         folder,
         'socket-id',
       );

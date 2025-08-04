@@ -5,7 +5,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { DatabaseService } from '@src/database/database.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { TasksGateway } from '@src/sockets/tasks.gateway';
 import { Task } from './tasks.dto';
 import { ITask, IGetTasksResponse, IGetTasksRequest } from './tasks.types';
@@ -17,7 +17,7 @@ export class TasksService {
   private readonly MAX_UNVERIFIED_TASKS = 10;
 
   constructor(
-    private prisma: DatabaseService,
+    private prisma: PrismaService,
     private tasksGateway: TasksGateway,
   ) {}
 

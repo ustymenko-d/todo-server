@@ -1,11 +1,11 @@
-import { DatabaseService } from '../database/database.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 
 describe('JwtStrategy', () => {
   let jwtStrategy: JwtStrategy;
-  let mockDb: Partial<DatabaseService>;
+  let mockDb: Partial<PrismaService>;
   let mockConfig: Partial<ConfigService>;
 
   const secret = 'test-secret';
@@ -15,7 +15,7 @@ describe('JwtStrategy', () => {
     mockConfig = { get: jest.fn().mockReturnValue(secret) };
     mockDb = { user: { findUnique: jest.fn() } } as any;
     jwtStrategy = new JwtStrategy(
-      mockDb as DatabaseService,
+      mockDb as PrismaService,
       mockConfig as ConfigService,
     );
   });

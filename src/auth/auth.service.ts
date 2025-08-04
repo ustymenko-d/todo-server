@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { DatabaseService } from 'src/database/database.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import { IAuthData, IUser, IUserInfo, TFindUserByQuery } from './auth.types';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -16,7 +16,7 @@ import HashHandler from 'src/common/utils/HashHandler';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: DatabaseService,
+    private readonly prisma: PrismaService,
     private readonly tokenService: TokensService,
     private readonly mailService: MailService,
   ) {}

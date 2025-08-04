@@ -23,9 +23,9 @@ describe('ConnectionGateway', () => {
     }).compile();
 
     gateway = module.get<ConnectionGateway>(ConnectionGateway);
-    configService = module.get<ConfigService>(ConfigService);
+    (gateway as any).server = createMockSocketServer();
 
-    gateway.server = createMockSocketServer() as Server;
+    configService = module.get<ConfigService>(ConfigService);
   });
 
   it('should be defined', () => {

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { DatabaseService } from 'src/database/database.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { FoldersGateway } from 'src/sockets/folders.gateway';
 import {
   ICreateFolderPayload,
@@ -16,7 +16,7 @@ import {
 @Injectable()
 export class FoldersService {
   constructor(
-    private readonly prisma: DatabaseService,
+    private readonly prisma: PrismaService,
     private foldersGateway: FoldersGateway,
   ) {}
 

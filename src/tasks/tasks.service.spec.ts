@@ -1,140 +1,143 @@
-import { TasksService } from './tasks.service';
 import { ForbiddenException } from '@nestjs/common';
-import { Task } from './tasks.dto';
+import { TasksService } from './tasks.service';
 import { IGetTasksRequest } from './tasks.types';
-import { mockDatabase } from 'test/mocks/database.mock';
-import { mockTasksGateway, mockTask } from 'test/mocks/tasks.mock';
+import { mockPrisma } from 'test/mocks/prisma.mock';
+import {
+  mockTasksGateway,
+  mockTask,
+  TTasksGatewayMock,
+} from 'test/mocks/tasks.mock';
 
 describe('TasksService', () => {
   let service: TasksService;
+  let gatewayMock: TTasksGatewayMock;
+  let task: ReturnType<typeof mockTask>;
+  const socket = 'socket-id';
+
+  const expectForbidden = async (fn: () => Promise<any>) =>
+    await expect(fn()).rejects.toThrow(ForbiddenException);
+
+  const buildPagination = (req: IGetTasksRequest) => [
+    mockPrisma.task.findMany({
+      where: { userId: req.userId },
+      skip: (req.page - 1) * req.limit,
+      take: req.limit,
+    }),
+    mockPrisma.task.count({ where: { userId: req.userId } }),
+  ];
 
   beforeEach(() => {
-    service = new TasksService(mockDatabase as any, mockTasksGateway as any);
     jest.clearAllMocks();
+    task = mockTask();
+    gatewayMock = mockTasksGateway();
+    service = new TasksService(mockPrisma as any, gatewayMock as any);
   });
 
   describe('createTask()', () => {
-    it('should create and emit task', async () => {
-      const task = mockTask();
-      mockDatabase.user.findUnique.mockResolvedValueOnce({ isVerified: true });
-      mockDatabase.task.create.mockResolvedValueOnce(task);
+    it('creates and emits', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ isVerified: true });
+      mockPrisma.task.create.mockResolvedValueOnce(task);
 
-      const payload = { title: 'Test', userId: 'user-id' };
-      const result = await service.createTask(payload, 'socket');
+      const payload = { title: 'T', userId: task.userId };
+      const result = await service.createTask(payload, socket);
 
-      expect(mockDatabase.task.create).toHaveBeenCalledWith({ data: payload });
-      expect(mockTasksGateway.emitTaskCreated).toHaveBeenCalledWith(
-        task,
-        'socket',
-      );
+      expect(mockPrisma.task.create).toHaveBeenCalledWith({ data: payload });
+      expect(gatewayMock.emitTaskCreated).toHaveBeenCalledWith(result, socket);
       expect(result).toEqual(task);
     });
 
-    it('should throw if unverified and too many tasks', async () => {
-      mockDatabase.user.findUnique.mockResolvedValueOnce({ isVerified: false });
-      mockDatabase.task.count.mockResolvedValueOnce(15);
+    it('forbids if unverified with many tasks', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ isVerified: false });
+      mockPrisma.task.count.mockResolvedValueOnce(15);
 
-      await expect(
-        service.createTask({ userId: 'u', title: '' }, 's'),
-      ).rejects.toThrow(ForbiddenException);
+      await expectForbidden(() =>
+        service.createTask({ title: '', userId: task.userId }, socket),
+      );
     });
   });
 
   describe('toggleStatus()', () => {
-    it('should toggle completion and emit', async () => {
-      const task = mockTask();
-      mockDatabase.task.findUniqueOrThrow.mockResolvedValueOnce({
+    it('toggles and emits', async () => {
+      mockPrisma.task.findUniqueOrThrow.mockResolvedValueOnce({
         completed: false,
       });
-      mockDatabase.task.update.mockResolvedValueOnce(task);
+      mockPrisma.task.update.mockResolvedValueOnce(task);
 
-      const result = await service.toggleStatus('1', 'socket');
+      const result = await service.toggleStatus(task.id, socket);
 
-      expect(mockDatabase.task.update).toHaveBeenCalledWith({
-        where: { id: '1' },
+      expect(mockPrisma.task.update).toHaveBeenCalledWith({
+        where: { id: task.id },
         data: { completed: true },
       });
-      expect(mockTasksGateway.emitTaskToggleStatus).toHaveBeenCalled();
-      expect(result).toEqual(task);
-    });
-  });
-
-  describe('deleteTask()', () => {
-    it('should delete and emit', async () => {
-      const task = mockTask();
-      mockDatabase.task.delete.mockResolvedValueOnce(task);
-
-      const result = await service.deleteTask('1', 'socket');
-
-      expect(mockDatabase.task.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
-      });
-      expect(mockTasksGateway.emitTaskDeleted).toHaveBeenCalledWith(
-        task,
-        'socket',
+      expect(gatewayMock.emitTaskToggleStatus).toHaveBeenCalledWith(
+        result,
+        socket,
       );
       expect(result).toEqual(task);
     });
   });
 
   describe('editTask()', () => {
-    it('should update and emit', async () => {
-      const task = mockTask();
-      const input: Task = { ...task, title: 'Updated title' };
-      mockDatabase.task.update.mockResolvedValueOnce(input);
-
-      mockDatabase.folder.findUnique.mockResolvedValueOnce({
-        id: 'folder-id',
-        userId: 'user-id',
-        title: 'Folder title',
+    it('updates and emits', async () => {
+      const updated = { ...task, title: 'New' };
+      mockPrisma.folder.findUnique.mockResolvedValueOnce({
+        id: updated.folderId,
+        userId: updated.userId,
       });
+      mockPrisma.task.update.mockResolvedValueOnce(updated);
 
-      const result = await service.editTask(input, 'socket');
+      const result = await service.editTask(updated, socket);
 
-      expect(mockDatabase.task.update).toHaveBeenCalledWith({
-        where: { id: input.id },
-        data: input,
+      expect(mockPrisma.task.update).toHaveBeenCalledWith({
+        where: { id: updated.id },
+        data: updated,
       });
-      expect(mockTasksGateway.emitTaskUpdated).toHaveBeenCalledWith(
-        input,
-        'socket',
-      );
-      expect(result).toEqual(input);
+      expect(gatewayMock.emitTaskUpdated).toHaveBeenCalledWith(result, socket);
+      expect(result).toEqual(updated);
+    });
+  });
+
+  describe('deleteTask()', () => {
+    it('deletes and emits', async () => {
+      mockPrisma.task.delete.mockResolvedValueOnce(task);
+
+      const result = await service.deleteTask(task.id, socket);
+
+      expect(mockPrisma.task.delete).toHaveBeenCalledWith({
+        where: { id: task.id },
+      });
+      expect(gatewayMock.emitTaskDeleted).toHaveBeenCalledWith(result, socket);
+      expect(result).toEqual(task);
     });
   });
 
   describe('getTasks()', () => {
-    it('should return paginated tasks', async () => {
-      const task = mockTask();
-      const req: IGetTasksRequest = {
-        page: 1,
-        limit: 10,
-        userId: 'user-id',
-      };
+    it('returns paginated and includes subtasks', async () => {
+      const req: IGetTasksRequest = { page: 1, limit: 10, userId: task.userId };
+      const partials = [{ id: task.id }];
+      mockPrisma.$transaction.mockResolvedValueOnce([partials, 1]);
 
-      mockDatabase.$transaction.mockResolvedValueOnce([[{ id: task.id }], 1]);
-
-      mockDatabase.task.findUnique.mockImplementation(({ where }) => {
-        if (where.id === task.id) {
-          return Promise.resolve({ ...task, subtasks: [] });
-        }
-        return Promise.resolve(null);
-      });
+      mockPrisma.task.findUnique.mockImplementation(({ where }) =>
+        where.id === task.id
+          ? Promise.resolve({ ...task, subtasks: [] })
+          : Promise.resolve(null),
+      );
 
       const result = await service.getTasks(req);
 
-      expect(result).toEqual({
-        tasks: [{ ...task, subtasks: [] }],
-        page: 1,
-        limit: 10,
-        total: 1,
-        pages: 1,
-      });
-
-      expect(mockDatabase.$transaction).toHaveBeenCalledTimes(1);
-      expect(mockDatabase.task.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+        buildPagination(req),
+      );
+      expect(mockPrisma.task.findUnique).toHaveBeenCalledWith({
         where: { id: task.id },
         include: { subtasks: true },
+      });
+      expect(result).toEqual({
+        tasks: [{ ...task, subtasks: [] }],
+        page: req.page,
+        limit: req.limit,
+        total: 1,
+        pages: 1,
       });
     });
   });

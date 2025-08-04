@@ -1,16 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TasksGateway } from './tasks.gateway';
 import { ConfigService } from '@nestjs/config';
-import { Server } from 'socket.io';
 import {
   createMockConfigService,
   createMockSocketServer,
+  socketId,
 } from 'test/mocks/sockets.mock';
 import { mockTask } from 'test/mocks/tasks.mock';
+import { ITask } from 'src/tasks/tasks.types';
 
 describe('TasksGateway', () => {
   let gateway: TasksGateway;
   let emitEntityEventSpy: jest.SpyInstance;
+  const task: ITask = mockTask();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,57 +26,30 @@ describe('TasksGateway', () => {
     }).compile();
 
     gateway = module.get<TasksGateway>(TasksGateway);
-    (gateway as any).server = createMockSocketServer() as Server;
+    (gateway as any).server = createMockSocketServer();
 
-    emitEntityEventSpy = jest.spyOn<any, any>(gateway, 'emitEntityEvent');
+    emitEntityEventSpy = jest.spyOn(gateway as any, 'emitEntityEvent');
   });
 
-  const task = mockTask();
+  const testCases: Array<{
+    method: keyof TasksGateway;
+    action: string;
+  }> = [
+    { method: 'emitTaskCreated', action: 'created' },
+    { method: 'emitTaskUpdated', action: 'updated' },
+    { method: 'emitTaskToggleStatus', action: 'toggleStatus' },
+    { method: 'emitTaskDeleted', action: 'deleted' },
+  ];
 
-  describe('emitTaskCreated', () => {
-    it('should emit "task:created" event', () => {
-      gateway.emitTaskCreated(task, 'socket-id');
+  testCases.forEach(({ method, action }) => {
+    it(`should emit "task:${action}" via ${method}`, () => {
+      (gateway[method] as any)(task, socketId);
+
       expect(emitEntityEventSpy).toHaveBeenCalledWith(
         'task',
-        'created',
+        action,
         task,
-        'socket-id',
-      );
-    });
-  });
-
-  describe('emitTaskUpdated', () => {
-    it('should emit "task:updated" event', () => {
-      gateway.emitTaskUpdated(task, 'socket-id');
-      expect(emitEntityEventSpy).toHaveBeenCalledWith(
-        'task',
-        'updated',
-        task,
-        'socket-id',
-      );
-    });
-  });
-
-  describe('emitTaskToggleStatus', () => {
-    it('should emit "task:toggleStatus" event', () => {
-      gateway.emitTaskToggleStatus(task, 'socket-id');
-      expect(emitEntityEventSpy).toHaveBeenCalledWith(
-        'task',
-        'toggleStatus',
-        task,
-        'socket-id',
-      );
-    });
-  });
-
-  describe('emitTaskDeleted', () => {
-    it('should emit "task:deleted" event', () => {
-      gateway.emitTaskDeleted(task, 'socket-id');
-      expect(emitEntityEventSpy).toHaveBeenCalledWith(
-        'task',
-        'deleted',
-        task,
-        'socket-id',
+        socketId,
       );
     });
   });
