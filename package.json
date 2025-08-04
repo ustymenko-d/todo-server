@@ -1,7 +1,7 @@
 {
-  "name": "todo-server",
+  "name": "u-todo-server",
   "version": "1.0.0",
-  "description": "Server part of the todo application",
+  "description": "Server-side logic for the uTodo task management application",
   "author": {
     "name": "Denys Ustymenko",
     "email": "ustymenko.denys@gmail.com",
