@@ -62,6 +62,24 @@ export class AuthController {
     );
   }
 
+  @Get('resend-verification-email')
+  @UseGuards(AuthGuard('jwt'))
+  async resendVerificationEmail(
+    @Req() req: { user: IJwtUser },
+  ): Promise<IResponseStatus> {
+    return handleRequest(
+      async () => {
+        await this.authService.resendVerificationEmail(req.user.email);
+        return {
+          success: true,
+          message: 'Verification email sent successfully.',
+        };
+      },
+      'Error during resend verification email.',
+      this.logger,
+    );
+  }
+
   @Get('email-verification')
   async emailVerification(
     @Query('verificationToken') verificationToken: string,

@@ -62,6 +62,25 @@ export class AuthService {
     }
   }
 
+  async resendVerificationEmail(email: string) {
+    const { verificationToken, isVerified } = await this.prisma.user.findUnique(
+      {
+        where: { email },
+        select: { verificationToken: true, isVerified: true },
+      },
+    );
+
+    if (isVerified)
+      throw new ConflictException(
+        'User is already verified. No need to resend verification email.',
+      );
+
+    if (!verificationToken)
+      throw new NotFoundException('Verification token not found.');
+
+    await this.mailService.sendVerificationEmail(email, verificationToken);
+  }
+
   async login(email: string, password: string): Promise<IAuthData> {
     const user = await this.findUserBy({ email });
     const passwordVerified = await HashHandler.compareString(
