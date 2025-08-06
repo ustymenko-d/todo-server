@@ -32,7 +32,7 @@ describe('CleanupService', () => {
       createdAt: { lt: expect.any(Date) },
     };
 
-    await service.dailyCleaning();
+    await service.dailyCleanup();
 
     expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expectedRefreshTokenWhere }),
@@ -46,14 +46,14 @@ describe('CleanupService', () => {
   it('should log start and completion messages', async () => {
     const logSpy = jest.spyOn(service['logger'], 'log');
 
-    await service.dailyCleaning();
+    await service.dailyCleanup();
 
-    expect(logSpy).toHaveBeenCalledWith('Starting daily cleaning...');
+    expect(logSpy).toHaveBeenCalledWith('Starting daily cleanup...');
     expect(logSpy).toHaveBeenCalledWith('Starting cleanup for refreshToken...');
     expect(logSpy).toHaveBeenCalledWith('Deleted 3 refreshToken records.');
     expect(logSpy).toHaveBeenCalledWith('Starting cleanup for user...');
     expect(logSpy).toHaveBeenCalledWith('Deleted 1 user records.');
-    expect(logSpy).toHaveBeenCalledWith('Daily cleaning is completed.');
+    expect(logSpy).toHaveBeenCalledWith('Daily cleanup completed.');
   });
 
   it('should log if no records found during cleanup', async () => {
@@ -62,7 +62,7 @@ describe('CleanupService', () => {
 
     const logSpy = jest.spyOn(service['logger'], 'log');
 
-    await service.dailyCleaning();
+    await service.dailyCleanup();
 
     expect(logSpy).toHaveBeenCalledWith(
       'No refreshToken records found for cleanup.',
@@ -71,13 +71,13 @@ describe('CleanupService', () => {
   });
 
   it('should throw error and log if cleanup fails', async () => {
-    const error = new Error('Test error');
+    const error = new Error('Test cleanup error');
 
     mockPrisma.user.deleteMany.mockRejectedValueOnce(error);
 
     const errorSpy = jest.spyOn(service['logger'], 'error');
 
-    await expect(service.dailyCleaning()).rejects.toThrow(error);
+    await expect(service.dailyCleanup()).rejects.toThrow(error);
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('Failed to clean up user: '),

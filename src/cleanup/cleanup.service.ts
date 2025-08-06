@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaWhereInput } from 'src/common/common.types';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AllCleanupTasks } from './cleanup.types';
 
 @Injectable()
 export class CleanupService {
@@ -9,45 +10,50 @@ export class CleanupService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly cleanupTasks: AllCleanupTasks[] = [
+    {
+      entity: 'refreshToken',
+      conditionsProvider: () => this.getExpiredTokenConditions(),
+    },
+    {
+      entity: 'user',
+      conditionsProvider: () => this.getUnverifiedUserConditions(),
+    },
+  ];
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async dailyCleaning() {
-    this.logger.log('Starting daily cleaning...');
+  async dailyCleanup() {
+    this.logger.log('Starting daily cleanup...');
 
-    await this.executeCleanup([
-      { entity: 'refreshToken', conditions: this.getExpiredTokenConditions() },
-      { entity: 'user', conditions: this.getUnverifiedUserConditions() },
-    ]);
-
-    this.logger.log('Daily cleaning is completed.');
-  }
-
-  private async executeCleanup<T extends keyof PrismaService>(
-    tasks: { entity: T; conditions: PrismaWhereInput<T> }[],
-  ) {
     await Promise.all(
-      tasks.map(({ entity, conditions }) => this.cleanup(entity, conditions)),
+      this.cleanupTasks.map(({ entity, conditionsProvider }) =>
+        this.cleanup(entity, conditionsProvider()),
+      ),
     );
+
+    this.logger.log('Daily cleanup completed.');
   }
 
   private async cleanup<T extends keyof PrismaService>(
     entity: T,
     conditions: PrismaWhereInput<T>,
   ) {
-    const entityString = String(entity);
-    try {
-      this.logger.log(`Starting cleanup for ${entityString}...`);
+    const entityName = String(entity);
 
-      const count = await this.prisma[entityString]
+    try {
+      this.logger.log(`Starting cleanup for ${entityName}...`);
+
+      const count = await this.prisma[entityName]
         .deleteMany({ where: conditions })
-        .then((result) => result.count);
+        .then((result: { count: number }) => result.count);
 
       this.logger.log(
         count > 0
-          ? `Deleted ${count} ${entityString} records.`
-          : `No ${entityString} records found for cleanup.`,
+          ? `Deleted ${count} ${entityName} records.`
+          : `No ${entityName} records found for cleanup.`,
       );
     } catch (error) {
-      this.logger.error(`Failed to clean up ${entityString}: `, error.stack);
+      this.logger.error(`Failed to clean up ${entityName}: `, error.stack);
       throw error;
     }
   }
