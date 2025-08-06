@@ -22,9 +22,11 @@ describe('TasksController', () => {
   const newTaskDto: TaskBase = { title: 'New Task' };
   const getRequest: GetTasksRequest = { page: 1, limit: 10 };
   const editedTask: Task = mockTask({ title: 'Edited task' });
-  const toggledTask = mockTask({ completed: true });
+  const task = mockTask();
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TasksController],
       providers: [
@@ -39,7 +41,6 @@ describe('TasksController', () => {
 
   describe('create()', () => {
     it('returns created task', async () => {
-      const task = mockTask();
       service.createTask.mockResolvedValueOnce(task);
 
       const result = await controller.create(
@@ -113,6 +114,8 @@ describe('TasksController', () => {
   });
 
   describe('toggleStatus()', () => {
+    const toggledTask = mockTask({ ...task, completed: true });
+
     it('toggles and returns task', async () => {
       service.toggleStatus.mockResolvedValueOnce(toggledTask);
 
@@ -144,23 +147,20 @@ describe('TasksController', () => {
 
   describe('delete()', () => {
     it('deletes and returns task', async () => {
-      service.deleteTask.mockResolvedValueOnce(toggledTask);
+      service.deleteTask.mockResolvedValueOnce(task);
 
-      const result = await controller.delete(
-        { taskId: toggledTask.id },
-        socketId,
-      );
+      const result = await controller.delete({ taskId: task.id }, socketId);
 
-      expect(service.deleteTask).toHaveBeenCalledWith(toggledTask.id, socketId);
+      expect(service.deleteTask).toHaveBeenCalledWith(task.id, socketId);
       expect(result).toEqual(
-        expectSuccess<Task>('Task deleted successfully.', toggledTask, 'task'),
+        expectSuccess<Task>('Task deleted successfully.', task, 'task'),
       );
     });
 
     it('throws when service fails', async () => {
       service.deleteTask.mockRejectedValueOnce(new Error('Error'));
       await expectThrows(() =>
-        controller.delete({ taskId: toggledTask.id }, socketId),
+        controller.delete({ taskId: task.id }, socketId),
       );
     });
   });

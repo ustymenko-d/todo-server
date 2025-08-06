@@ -22,9 +22,11 @@ describe('FoldersController', () => {
   const folderId: FolderId = { folderId: 'folder-id' };
   const folderName: FolderName = { name: 'Folder name' };
   const getRequest = { page: 1, limit: 10, name: '' };
-  const renamedFolder: FolderName = { name: 'Renamed folder' };
+  const folder = mockFolder();
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [FoldersController],
       providers: [
@@ -39,7 +41,6 @@ describe('FoldersController', () => {
 
   describe('create()', () => {
     it('should return created folder', async () => {
-      const folder = mockFolder();
       service.createFolder.mockResolvedValueOnce(folder);
 
       const result = await controller.create(
@@ -94,8 +95,9 @@ describe('FoldersController', () => {
   });
 
   describe('rename()', () => {
+    const renamedFolder = { ...folder, name: 'Renamed folder' };
+
     it('should return renamed folder', async () => {
-      const folder = mockFolder();
       service.renameFolder.mockResolvedValueOnce(folder);
 
       const result = await controller.rename(folderId, renamedFolder, socketId);
@@ -116,6 +118,7 @@ describe('FoldersController', () => {
 
     it('should throw when service fails', async () => {
       service.renameFolder.mockRejectedValueOnce(new Error('Error'));
+
       await expectThrows(() =>
         controller.rename(folderId, renamedFolder, socketId),
       );
@@ -124,7 +127,6 @@ describe('FoldersController', () => {
 
   describe('delete()', () => {
     it('should return deleted folder', async () => {
-      const folder = mockFolder();
       service.deleteFolder.mockResolvedValueOnce(folder);
 
       const result = await controller.delete(folderId, socketId);

@@ -11,6 +11,7 @@ import {
 } from 'test/mocks/folders.mock';
 import { IGetFoldersPayload } from './folders.types';
 import { socketId } from 'test/mocks/sockets.mock';
+import { buildPagination } from 'test/utils/buildPagination';
 
 describe('FoldersService', () => {
   let service: FoldersService;
@@ -18,10 +19,7 @@ describe('FoldersService', () => {
 
   const userId = 'user-id';
   const newFolderPayload = { name: 'New Folder', userId };
-  const defaultFolder = mockFolder();
-  const oldFolder = mockFolder({ name: 'Old name' });
-  const updatedFolder = mockFolder({ name: 'New name' });
-  const deletedFolder = mockFolder();
+  const folder = mockFolder();
 
   const expectForbidden = async (count: number, isVerified: boolean) => {
     mockPrisma.user.findUnique.mockResolvedValue({ isVerified });
@@ -52,7 +50,7 @@ describe('FoldersService', () => {
     it('creates folder and emits event for allowed user', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ isVerified: true });
       mockPrisma.folder.count.mockResolvedValue(0);
-      mockPrisma.folder.create.mockResolvedValue(defaultFolder);
+      mockPrisma.folder.create.mockResolvedValue(folder);
 
       const result = await service.createFolder(newFolderPayload, socketId);
 
@@ -67,10 +65,10 @@ describe('FoldersService', () => {
         data: newFolderPayload,
       });
       expect(gatewayMock.emitFolderCreated).toHaveBeenCalledWith(
-        defaultFolder,
+        folder,
         socketId,
       );
-      expect(result).toEqual(defaultFolder);
+      expect(result).toEqual(folder);
     });
 
     test.each`
@@ -84,34 +82,25 @@ describe('FoldersService', () => {
 
   describe('getFolders', () => {
     it('returns paginated result', async () => {
-      const folders = [defaultFolder];
-      const total = 1;
+      const folders = [folder];
+      const total = folders.length;
       const req: IGetFoldersPayload = {
         page: 2,
         limit: 5,
-        name: 'abc',
+        name: '',
         userId,
       };
 
       mockPrisma.$transaction.mockResolvedValueOnce([folders, total]);
+
       const res = await service.getFolders(req);
 
-      expect(mockPrisma.$transaction).toHaveBeenCalledWith([
-        mockPrisma.folder.findMany({
-          where: {
-            userId,
-            name: { contains: req.name, mode: 'insensitive' },
-          },
-          skip: (req.page - 1) * req.limit,
-          take: req.limit,
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+        buildPagination('folder', req, {
+          userId,
+          name: { contains: req.name, mode: 'insensitive' },
         }),
-        mockPrisma.folder.count({
-          where: {
-            userId,
-            name: { contains: req.name, mode: 'insensitive' },
-          },
-        }),
-      ]);
+      );
       expect(res).toEqual({
         folders,
         page: req.page,
@@ -123,8 +112,10 @@ describe('FoldersService', () => {
   });
 
   describe('renameFolder', () => {
+    const updatedFolder = mockFolder({ name: 'New name' });
+
     it('renames existing folder and emits event', async () => {
-      mockPrisma.folder.findUnique.mockResolvedValue(oldFolder);
+      mockPrisma.folder.findUnique.mockResolvedValue(folder);
       mockPrisma.folder.update.mockResolvedValue(updatedFolder);
 
       const res = await service.renameFolder(
@@ -158,7 +149,7 @@ describe('FoldersService', () => {
 
   describe('deleteFolder', () => {
     it('deletes folder and emits event', async () => {
-      mockPrisma.folder.delete.mockResolvedValue(deletedFolder);
+      mockPrisma.folder.delete.mockResolvedValue(folder);
 
       const res = await service.deleteFolder('folder-id', socketId);
 
@@ -166,10 +157,10 @@ describe('FoldersService', () => {
         where: { id: 'folder-id' },
       });
       expect(gatewayMock.emitFolderDeleted).toHaveBeenCalledWith(
-        deletedFolder,
+        folder,
         socketId,
       );
-      expect(res).toEqual(deletedFolder);
+      expect(res).toEqual(folder);
     });
   });
 });
