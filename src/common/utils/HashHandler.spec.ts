@@ -26,7 +26,7 @@ describe('HashHandler Utility', () => {
   });
 
   describe('compareString', () => {
-    it('returns true when bcrypt.compare resolves to true', async () => {
+    it('should return true when strings match', async () => {
       compareMock.mockResolvedValue(true);
 
       const isMatch = await HashHandler.compareString(plain, fakeHash);
@@ -35,7 +35,7 @@ describe('HashHandler Utility', () => {
       expect(isMatch).toBe(true);
     });
 
-    it('returns false when bcrypt.compare resolves to false', async () => {
+    it('should return false when strings do not match', async () => {
       compareMock.mockResolvedValue(false);
 
       const isMatch = await HashHandler.compareString(plain, fakeHash);

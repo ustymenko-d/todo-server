@@ -5,11 +5,13 @@ describe('handleRequest Utility', () => {
   const successValue = { data: 'ok' };
   const errorMessage = 'Request failed';
 
-  let handlerMock: jest.Mock<Promise<any>>;
+  let handlerMock: jest.Mock<Promise<typeof successValue>>;
   let logger: Logger;
   let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
     handlerMock = jest.fn();
     logger = new Logger('TestLogger');
     errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});

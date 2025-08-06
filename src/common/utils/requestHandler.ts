@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 export const handleRequest = async <T>(
   handler: () => Promise<T>,
   errorMessage: string,
-  logger: Logger = new Logger('RequestHandler'),
+  logger: Logger,
 ): Promise<T> => {
   try {
     return await handler();

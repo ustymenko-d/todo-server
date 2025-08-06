@@ -1,21 +1,22 @@
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { mockPrisma } from 'test/mocks/prisma.mock';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 
 describe('JwtStrategy', () => {
   let jwtStrategy: JwtStrategy;
-  let mockDb: Partial<PrismaService>;
   let mockConfig: Partial<ConfigService>;
 
   const secret = 'test-secret';
   const payload = { sub: '123', email: 'user@email.com', tokenVersion: 1 };
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
     mockConfig = { get: jest.fn().mockReturnValue(secret) };
-    mockDb = { user: { findUnique: jest.fn() } } as any;
     jwtStrategy = new JwtStrategy(
-      mockDb as PrismaService,
+      mockPrisma as unknown as PrismaService,
       mockConfig as ConfigService,
     );
   });
@@ -27,14 +28,14 @@ describe('JwtStrategy', () => {
   });
 
   it('should throw when user not found', async () => {
-    (mockDb.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(null);
     await expect(jwtStrategy.validate(payload)).rejects.toThrow(
       `User not found (ID: ${payload.sub}).`,
     );
   });
 
   it('should throw when tokenVersion mismatches', async () => {
-    (mockDb.user.findUnique as jest.Mock).mockResolvedValue({
+    (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
       id: '123',
       tokenVersion: 2,
       email: 'user@email.com',
@@ -46,7 +47,7 @@ describe('JwtStrategy', () => {
 
   it('should return user data when valid', async () => {
     const userRecord = { id: '123', tokenVersion: 1, email: 'user@email.com' };
-    (mockDb.user.findUnique as jest.Mock).mockResolvedValue(userRecord);
+    (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(userRecord);
     const result = await jwtStrategy.validate(payload);
     expect(result).toEqual({
       userId: '123',
