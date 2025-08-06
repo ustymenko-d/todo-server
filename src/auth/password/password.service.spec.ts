@@ -4,9 +4,11 @@ import { AuthService } from '../auth.service';
 import { TokensService } from '../tokens/tokens.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import HashHandler from 'src/common/utils/HashHandler';
 import { mockPrisma } from 'test/mocks/prisma.mock';
 import { expectThrows } from 'test/utils/expectThrows';
+import { mockTokensService, TTokensServiceMock } from 'test/mocks/tokens.mock';
+import { mockAuthService, TAuthServiceMock } from 'test/mocks/auth.mock';
+import HashHandler from 'src/common/utils/HashHandler';
 
 jest.mock('src/common/utils/HashHandler', () => ({
   __esModule: true,
@@ -15,17 +17,9 @@ jest.mock('src/common/utils/HashHandler', () => ({
 
 describe('PasswordService', () => {
   let service: PasswordService;
-
-  const mockAuthService = {
-    findUserBy: jest.fn(),
-  };
-  const mockTokensService = {
-    createResetPasswordToken: jest.fn(),
-    verifyResetPasswordToken: jest.fn(),
-  };
-  const mockMailService = {
-    sendResetPasswordEmail: jest.fn(),
-  };
+  let authService: TAuthServiceMock;
+  let tokensService: TTokensServiceMock;
+  let mailService: Partial<MailService>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -33,14 +27,22 @@ describe('PasswordService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PasswordService,
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: TokensService, useValue: mockTokensService },
-        { provide: MailService, useValue: mockMailService },
+        { provide: AuthService, useFactory: mockAuthService },
+        { provide: TokensService, useFactory: mockTokensService },
+        {
+          provide: MailService,
+          useValue: {
+            sendResetPasswordEmail: jest.fn(),
+          },
+        },
         { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();
 
     service = module.get(PasswordService);
+    authService = module.get(AuthService);
+    tokensService = module.get(TokensService);
+    mailService = module.get(MailService);
   });
 
   describe('sendResetPasswordEmail', () => {
@@ -50,23 +52,21 @@ describe('PasswordService', () => {
       const user = { id: 'user-id' };
       const token = 'token';
 
-      mockAuthService.findUserBy.mockResolvedValue(user);
-      mockTokensService.createResetPasswordToken.mockReturnValue(token);
+      authService.findUserBy.mockResolvedValue(user);
+      tokensService.createResetPasswordToken.mockReturnValue(token);
 
       await service.sendResetPasswordEmail(email);
 
-      expect(mockAuthService.findUserBy).toHaveBeenCalledWith({ email });
-      expect(mockTokensService.createResetPasswordToken).toHaveBeenCalledWith(
-        user,
-      );
-      expect(mockMailService.sendResetPasswordEmail).toHaveBeenCalledWith(
+      expect(authService.findUserBy).toHaveBeenCalledWith({ email });
+      expect(tokensService.createResetPasswordToken).toHaveBeenCalledWith(user);
+      expect(mailService.sendResetPasswordEmail).toHaveBeenCalledWith(
         email,
         token,
       );
     });
 
     it('propagates if authService.findUserBy throws', async () => {
-      mockAuthService.findUserBy.mockRejectedValue(new Error('Error'));
+      authService.findUserBy.mockRejectedValue(new Error('Error'));
 
       await expectThrows(() => service.sendResetPasswordEmail(email));
     });
@@ -79,12 +79,14 @@ describe('PasswordService', () => {
       const hash = 'hashed-pass123';
       const payload = { userId: 'user-id', tokenVersion: 2 };
 
-      mockTokensService.verifyResetPasswordToken.mockReturnValue(payload);
-      (HashHandler.hashString as jest.Mock).mockResolvedValue(hash);
+      tokensService.verifyResetPasswordToken.mockReturnValue(payload);
+      (
+        HashHandler as jest.Mocked<typeof HashHandler>
+      ).hashString.mockResolvedValue(hash);
 
       await service.resetPassword(resetToken, newPassword);
 
-      expect(mockTokensService.verifyResetPasswordToken).toHaveBeenCalledWith(
+      expect(tokensService.verifyResetPasswordToken).toHaveBeenCalledWith(
         resetToken,
       );
       expect(HashHandler.hashString).toHaveBeenCalledWith(newPassword);
@@ -99,7 +101,7 @@ describe('PasswordService', () => {
     });
 
     it('propagates if verifyResetPasswordToken throws', async () => {
-      mockTokensService.verifyResetPasswordToken.mockImplementation(() => {
+      tokensService.verifyResetPasswordToken.mockImplementation(() => {
         throw new Error('Error');
       });
 

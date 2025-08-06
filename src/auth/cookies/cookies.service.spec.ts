@@ -5,6 +5,7 @@ import { createResponseMock } from 'test/mocks/cookies.mock';
 
 describe('CookiesService', () => {
   let service: CookiesService;
+  const response = createResponseMock();
 
   const createModuleWithEnv = async (env: string) => {
     const module: TestingModule = await Test.createTestingModule({
@@ -12,7 +13,9 @@ describe('CookiesService', () => {
         CookiesService,
         {
           provide: ConfigService,
-          useValue: { get: (key: string) => (key === 'NODE_ENV' ? env : null) },
+          useValue: {
+            get: (key: string) => (key === 'NODE_ENV' ? env : null),
+          },
         },
       ],
     }).compile();
@@ -20,81 +23,84 @@ describe('CookiesService', () => {
     return module.get(CookiesService);
   };
 
-  const res = createResponseMock();
+  const getCookieOptions = (env: string, rememberMe: boolean) => {
+    const isProd = env === 'production';
+    const baseOptions = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+    };
 
-  beforeEach(async () => {
+    return rememberMe ? { ...baseOptions, maxAge: 43200000 } : baseOptions;
+  };
+
+  const expectCookieCalledWith = (
+    spy: jest.SpyInstance,
+    name: string,
+    value: string,
+    options?: Partial<Record<string, unknown>>,
+  ) => {
+    expect(spy).toHaveBeenCalledWith(
+      name,
+      value,
+      expect.objectContaining(options ?? {}),
+    );
+  };
+
+  const expectAllCookiesSet = (
+    spy: jest.SpyInstance,
+    env: string,
+    rememberMe: boolean,
+    accessToken: string,
+    refreshToken: string,
+  ) => {
+    const options = getCookieOptions(env, rememberMe);
+
+    expect(spy).toHaveBeenCalledTimes(3);
+    expectCookieCalledWith(spy, 'accessToken', accessToken, options);
+    expectCookieCalledWith(spy, 'refreshToken', refreshToken, options);
+    expectCookieCalledWith(spy, 'rememberMe', rememberMe.toString(), options);
+  };
+
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe('clearAuthCookies', () => {
     it('calls clearCookie for accessToken, refreshToken, and rememberMe', async () => {
       service = await createModuleWithEnv('production');
-      const spy = jest.spyOn(res, 'clearCookie');
+      const spy = jest.spyOn(response, 'clearCookie');
 
-      service.clearAuthCookies(res);
+      service.clearAuthCookies(response);
 
       expect(spy).toHaveBeenCalledTimes(3);
-      expect(spy).toHaveBeenCalledWith('accessToken', expect.any(Object));
-      expect(spy).toHaveBeenCalledWith('refreshToken', expect.any(Object));
-      expect(spy).toHaveBeenCalledWith('rememberMe', expect.any(Object));
+      ['accessToken', 'refreshToken', 'rememberMe'].forEach((cookieName) => {
+        expect(spy).toHaveBeenCalledWith(cookieName, expect.any(Object));
+      });
     });
   });
 
-  describe('setAuthCookies', () => {
-    it('sets all cookies without maxAge if rememberMe=false', async () => {
-      service = await createModuleWithEnv('development');
-      const spy = jest.spyOn(res, 'cookie');
+  describe.each([
+    ['development', false],
+    ['production', true],
+  ])('setAuthCookies in %s env with rememberMe=%s', (env, rememberMe) => {
+    it('sets cookies correctly', async () => {
+      service = await createModuleWithEnv(env);
+      const spy = jest.spyOn(response, 'cookie');
 
-      service.setAuthCookies(res, 'a-token', 'r-token', false);
+      service.setAuthCookies(
+        response,
+        'access-token',
+        'refresh-token',
+        rememberMe,
+      );
 
-      expect(spy).toHaveBeenCalledTimes(3);
-      expect(spy).toHaveBeenCalledWith(
-        'accessToken',
-        'a-token',
-        expect.objectContaining({
-          httpOnly: true,
-          secure: false,
-          sameSite: 'lax',
-        }),
-      );
-      expect(spy).toHaveBeenCalledWith(
-        'refreshToken',
-        'r-token',
-        expect.any(Object),
-      );
-      expect(spy).toHaveBeenCalledWith(
-        'rememberMe',
-        'false',
-        expect.any(Object),
-      );
-    });
-
-    it('sets all cookies with maxAge if rememberMe=true', async () => {
-      service = await createModuleWithEnv('production');
-      const spy = jest.spyOn(res, 'cookie');
-
-      service.setAuthCookies(res, 'a-token', 'r-token', true);
-
-      expect(spy).toHaveBeenCalledTimes(3);
-      expect(spy).toHaveBeenCalledWith(
-        'accessToken',
-        'a-token',
-        expect.objectContaining({
-          maxAge: 43200000, // 12h
-          httpOnly: true,
-          secure: true,
-          sameSite: 'none',
-        }),
-      );
-      expect(spy).toHaveBeenCalledWith(
-        'refreshToken',
-        'r-token',
-        expect.any(Object),
-      );
-      expect(spy).toHaveBeenCalledWith(
-        'rememberMe',
-        'true',
-        expect.any(Object),
+      expectAllCookiesSet(
+        spy,
+        env,
+        rememberMe,
+        'access-token',
+        'refresh-token',
       );
     });
   });

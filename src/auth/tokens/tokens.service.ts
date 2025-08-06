@@ -85,7 +85,7 @@ export class TokensService {
     refreshToken: string,
     sessionId: string,
   ) {
-    const { token } = await this.prisma.refreshToken.findFirst({
+    const record = await this.prisma.refreshToken.findFirst({
       where: {
         userId,
         sessionId,
@@ -94,11 +94,13 @@ export class TokensService {
       },
     });
 
-    if (!token) throw new UnauthorizedException('No refresh token found.');
+    if (!record || !record.token) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
 
-    const isTokenValid = await HashHandler.compareString(refreshToken, token);
+    const isValid = await HashHandler.compareString(refreshToken, record.token);
 
-    if (!isTokenValid)
+    if (!isValid)
       throw new UnauthorizedException('Invalid or expired refresh token.');
   }
 

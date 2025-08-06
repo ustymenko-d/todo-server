@@ -6,6 +6,7 @@ import {
   mockPasswordService,
   TPasswordServiceMock,
 } from 'test/mocks/password.mock';
+import { mockLoggerError } from 'test/mocks/commons.mock';
 
 describe('PasswordController', () => {
   let controller: PasswordController;
@@ -24,17 +25,11 @@ describe('PasswordController', () => {
 
     controller = module.get(PasswordController);
     service = module.get(PasswordService);
-    loggerErrorSpy = jest
-      .spyOn(controller['logger'], 'error')
-      .mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
+    loggerErrorSpy = mockLoggerError(controller);
   });
 
   describe('forgotPassword', () => {
-    const dto: EmailBase = { email: 'test@example.com' };
+    const dto: EmailBase = { email: 'user@email.com' };
 
     it('should send reset email', async () => {
       (service.sendResetPasswordEmail as jest.Mock).mockResolvedValue(
@@ -65,7 +60,7 @@ describe('PasswordController', () => {
 
   describe('resetPassword', () => {
     const dto: PasswordBase = { password: 'newPass123' };
-    const token = 'reset-token-xyz';
+    const token = 'reset-token';
 
     it('should update password', async () => {
       (service.resetPassword as jest.Mock).mockResolvedValue(undefined);

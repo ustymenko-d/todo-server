@@ -2,7 +2,7 @@ import { createMockMethods } from 'test/utils/createMockMethods';
 import { Response } from 'express';
 
 export const mockCookiesService = () =>
-  createMockMethods(['clearAuthCookies'] as const);
+  createMockMethods(['setAuthCookies', 'clearAuthCookies'] as const);
 
 export type TCookiesServiceMock = ReturnType<typeof mockCookiesService>;
 

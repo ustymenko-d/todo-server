@@ -4,7 +4,7 @@ import { TasksService } from './tasks.service';
 import { TaskBase, GetTasksRequest, Task } from './tasks.dto';
 import { IGetTasksResponse } from './tasks.types';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { mockJwtUser } from 'test/mocks/auth.mock';
+import { jwtUserMock } from 'test/mocks/auth.mock';
 import {
   mockTask,
   mockTasksService,
@@ -44,13 +44,13 @@ describe('TasksController', () => {
       service.createTask.mockResolvedValueOnce(task);
 
       const result = await controller.create(
-        { user: mockJwtUser },
+        { user: jwtUserMock },
         newTaskDto,
         socketId,
       );
 
       expect(service.createTask).toHaveBeenCalledWith(
-        { ...newTaskDto, userId: mockJwtUser.userId },
+        { ...newTaskDto, userId: jwtUserMock.userId },
         socketId,
       );
       expect(result).toEqual(
@@ -61,7 +61,7 @@ describe('TasksController', () => {
     it('throws when service fails', async () => {
       service.createTask.mockRejectedValueOnce(new Error('Error'));
       await expectThrows(() =>
-        controller.create({ user: mockJwtUser }, newTaskDto, socketId),
+        controller.create({ user: jwtUserMock }, newTaskDto, socketId),
       );
     });
   });
@@ -78,11 +78,11 @@ describe('TasksController', () => {
     it('returns paginated list', async () => {
       service.getTasks.mockResolvedValueOnce(response);
 
-      const result = await controller.get({ user: mockJwtUser }, getRequest);
+      const result = await controller.get({ user: jwtUserMock }, getRequest);
 
       expect(service.getTasks).toHaveBeenCalledWith({
         ...getRequest,
-        userId: mockJwtUser.userId,
+        userId: jwtUserMock.userId,
       });
       expect(result).toEqual(response);
     });
@@ -90,7 +90,7 @@ describe('TasksController', () => {
     it('throws when service fails', async () => {
       service.getTasks.mockRejectedValueOnce(new Error('Error'));
       await expectThrows(() =>
-        controller.get({ user: mockJwtUser }, getRequest),
+        controller.get({ user: jwtUserMock }, getRequest),
       );
     });
   });
